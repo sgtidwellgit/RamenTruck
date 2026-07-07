@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ramentruck"
+version = "0.2.0"
+description = "A deep, layered ML/AI toolkit — the machine learning companion to ThaiTruck."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+
+[project.optional-dependencies]
+
+dev=[
+    "pytest>=8.0",
+    "pytest-cov",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ramentruck"]

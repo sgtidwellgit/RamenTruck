@@ -1,0 +1,934 @@
+# RamenTruck — Project Document
+
+> **Current version:** 0.2.0 | **Python:** >= 3.9 | **Status:** Early development
+
+---
+
+## Table of Contents
+
+1. [What RamenTruck Is](#what-ramentruck-is)
+2. [The Philosophy](#the-philosophy)
+3. [Current State](#current-state)
+4. [Repository Layout (Target)](#repository-layout-target)
+5. [Dependency & Extras Architecture](#dependency--extras-architecture)
+6. [The Bowl - Implemented and Planned Modules](#the-bowl--implemented-and-planned-modules)
+   - [Implemented: `noodles`](#implemented-noodles--dataset-inspection--preprocessing)
+   - [Core: `broth`](#core-broth--the-foundation)
+   - [Core: `tare`](#core-tare--hyperparameter-tuning)
+   - [Core: `soft_boiled_egg`](#core-soft_boiled_egg--cross-validation)
+   - [Core: `chashu`](#core-chashu--model-persistence)
+   - [Explainability: `nori`](#explainability-nori--model-explainability)
+   - [Experiment Tracking: `miso`](#experiment-tracking-miso--experiment-tracking)
+   - [Deep Learning: `tonkotsu`](#deep-learning-tonkotsu--deep-learning-interface)
+   - [To Be Named](#to-be-named)
+7. [Design Principles](#design-principles)
+8. [Inter-Op with ThaiTruck](#inter-op-with-thaitruck)
+9. [The Food Truck Fleet](#the-food-truck-fleet)
+10. [Build & Publish Plan](#build--publish-plan)
+
+---
+
+## What RamenTruck Is
+
+RamenTruck is a deep, layered ML/AI toolkit. The current public entry point is `slurp()`, which inspects a pandas DataFrame and returns a `DatasetMenu` with dataset statistics, target/problem inference, class imbalance detection, and preprocessing recommendations. The broader roadmap includes model training, hyperparameter tuning, cross-validation, explainability, experiment tracking, model persistence, and deep learning architectures.
+
+RamenTruck is **not** a thin scikit-learn wrapper or a tutorial notebook. It is designed with genuine ML depth — handling edge cases like small-N datasets, class imbalance, noisy labels, and overfit diagnosis as first-class concerns rather than afterthoughts.
+
+```bash
+pip install ramentruck
+```
+
+---
+
+## The Philosophy
+
+**Why ramen?** Ramen is deep, layered, and complex. Great ramen takes time, precision, and real expertise — you can't shortcut the broth. That maps directly to serious ML work. The dish names follow through: `broth` is the base, `tare` is the concentrated seasoning, `chashu` is the slow-preserved topping, `nori` is the thin layer of insight on the surface, and `tonkotsu` is the heavy, long-cooked deep variant.
+
+The guiding design values:
+
+- **Depth over convenience** — don't paper over important details; expose them cleanly
+- **Composable, not monolithic** — each module is independent and useful on its own
+- **Edge-case first** — small N, class imbalance, noisy labels, and overfit diagnosis are not footnotes
+- **Optional extras, not mandatory bloat** — PyTorch/TensorFlow and SHAP are heavy dependencies; they are opt-in
+- **Consistent with ThaiTruck** — similar module independence, same no-mutation conventions, same `src/` layout
+
+---
+
+## Current State
+
+| Item | Status |
+|---|---|
+| PyPI name `ramentruck` | Secured |
+| Version | 0.2.0 |
+| `src/ramentruck/__init__.py` | Exists - exports `slurp`, `DatasetMenu`, `ChefRecommendation`, and `__version__ = "0.2.0"` |
+| `src/ramentruck/noodles.py` | Implemented - dataset inspection and recommendation engine |
+| `pyproject.toml` | Exists - hatchling build, Python >= 3.9, MIT license, `dev` extra |
+| `README.md` | Exists - current `slurp()` usage, planned module table, install instructions, fleet context |
+| Core ML modules | Planned - `broth`, `tare`, `soft_boiled_egg`, `chashu` not yet implemented |
+| Optional modules | Planned - `nori`, `miso`, `tonkotsu` not yet implemented |
+| Tests | `tests/test_noodles.py` exists |
+| Optional extras in `pyproject.toml` | Only `dev` exists currently; `explain`, `tracking`, `deep`, and `all` are still planned |
+
+The package is no longer a pure stub. The current implemented workflow is dataset inspection through `slurp()`. Classical ML, persistence, explainability, tracking, and deep learning modules remain roadmap items.
+
+---
+
+## Repository Layout (Target)
+
+```
+RamenTruck/
++-- pyproject.toml              # build config, metadata, optional extras
++-- README.md                   # user-facing install and usage guide
++-- PROJECT.md                  # this file - comprehensive project state + roadmap
++-- CHANGELOG.md                # per-version release notes (planned)
++-- src/
+|   +-- ramentruck/
+|       +-- __init__.py         # public re-exports + __version__
+|       +-- noodles.py          # dataset inspection and preprocessing (implemented)
+|       +-- broth.py            # base model training / fitting wrapper (planned)
+|       +-- tare.py             # hyperparameter tuning (planned)
+|       +-- soft_boiled_egg.py  # cross-validation (planned)
+|       +-- chashu.py           # model serialization + versioning (planned)
+|       +-- nori.py             # SHAP / explainability [explain extra] (planned)
+|       +-- miso.py             # experiment tracking [tracking extra] (planned)
+|       +-- tonkotsu.py         # deep learning [deep extra] (planned)
+|       +-- sensei.py           # neural network advisor (planned)
++-- tests/
+|   +-- __init__.py
+|   +-- test_noodles.py         # implemented
+|   +-- test_broth.py           # planned
+|   +-- test_tare.py            # planned
+|   +-- test_soft_boiled_egg.py # planned
+|   +-- test_chashu.py          # planned
+|   +-- test_nori.py            # planned
+|   +-- test_miso.py            # planned
+|   +-- test_tonkotsu.py        # planned
++-- benchmarks/                 # pytest-benchmark regressions (future)
+```
+
+---
+
+## Dependency & Extras Architecture
+
+The current package imports `pandas` and `numpy` from `noodles.py`, but `pyproject.toml` currently declares only the `dev` optional extra and no runtime dependencies. Before the next package release, runtime dependencies should be declared explicitly.
+
+The intended core package should stay lightweight: pandas, numpy, and scikit-learn for core data inspection and classical ML. Heavy dependencies such as PyTorch/TensorFlow, SHAP, MLflow, and W&B should remain opt-in extras.
+
+```toml
+[project]
+dependencies = [
+    "pandas>=1.5",
+    "numpy>=1.23",
+    "scikit-learn>=1.3",
+]
+
+[project.optional-dependencies]
+dev      = ["pytest>=8.0", "pytest-cov"]
+explain  = ["shap>=0.44"]
+tracking = ["mlflow>=2.0"]
+deep     = ["tensorflow>=2.12"]  # or torch>=2.0 - TBD at implementation
+all      = ["ramentruck[explain,tracking,deep]"]
+```
+
+Install patterns:
+
+```bash
+pip install ramentruck                   # core only (noodles, broth, tare, soft_boiled_egg, chashu)
+pip install ramentruck[explain]          # + nori  (SHAP)
+pip install ramentruck[tracking]         # + miso  (MLflow / W&B)
+pip install ramentruck[deep]             # + tonkotsu (PyTorch or TensorFlow)
+pip install ramentruck[all]              # everything
+```
+
+**Import guard pattern** — modules in optional extras must not cause `ImportError` at package import time. Each optional module should guard its heavy dependency with a clear, actionable error:
+
+```python
+# nori.py
+try:
+    import shap
+except ImportError as e:
+    raise ImportError(
+        "nori requires SHAP. Install it with: pip install ramentruck[explain]"
+    ) from e
+```
+
+---
+
+## The Bowl - Implemented and Planned Modules
+
+
+### Implemented: `noodles` - Dataset Inspection / Preprocessing
+
+**File:** `src/ramentruck/noodles.py`
+
+`noodles` currently provides the first implemented RamenTruck workflow: dataset inspection through `slurp()`.
+
+**Public API:**
+
+```python
+from ramentruck import slurp, DatasetMenu, ChefRecommendation
+
+menu = slurp(df, target="Purchased")
+```
+
+**Implemented result objects:**
+
+| Object | Description |
+|---|---|
+| `DatasetMenu` | Frozen dataclass containing row/column counts, memory usage, column type lists, missing-value summary, duplicate row count, and a `ChefRecommendation` |
+| `ChefRecommendation` | Frozen dataclass containing inferred problem type, scaling recommendation, encoding recommendation, loss, output activation, optimizer, and class imbalance flag |
+
+**Current behavior:**
+
+- Requires a pandas DataFrame input
+- Validates the optional target column
+- Detects numeric, categorical, boolean, and datetime columns
+- Reports missing values and duplicate rows
+- Infers regression vs. classification when a target is provided
+- Flags class imbalance when the minority class is below 10%
+- Recommends `StandardScaler`, `OneHotEncoder`, and basic neural-network loss/output defaults
+
+**Tests:** `tests/test_noodles.py` covers the implemented behavior.
+
+---
+---
+
+### Core: `broth` — The Foundation
+
+**File:** `src/ramentruck/broth.py`
+
+The base model training and fitting wrapper. Everything in RamenTruck builds on `broth`. It wraps the scikit-learn `fit` / `predict` / `score` cycle with opinionated defaults, consistent logging, and hooks for validation tracking.
+
+**Planned signature:**
+
+```python
+def broth(
+    model,
+    X_train: pd.DataFrame | np.ndarray,
+    y_train: pd.Series | np.ndarray,
+    X_val: pd.DataFrame | np.ndarray | None = None,
+    y_val: pd.Series | np.ndarray | None = None,
+    *,
+    metrics: list[str] = ["accuracy"],
+    verbose: bool = True,
+) -> BrothResult
+```
+
+**`BrothResult`** — a lightweight result container (dataclass or namedtuple) holding:
+
+| Field | Description |
+|---|---|
+| `model` | The fitted model object |
+| `train_score` | Score on training data |
+| `val_score` | Score on validation data (if provided) |
+| `metrics` | Dict of computed metric name → value |
+| `fit_time_s` | Wall-clock seconds to fit |
+
+**Supported metrics** (via scikit-learn): `"accuracy"`, `"f1"`, `"roc_auc"`, `"precision"`, `"recall"`, `"mse"`, `"rmse"`, `"r2"`. Metric list is open-ended — any sklearn scorer string should work.
+
+**Design notes:**
+
+- Works with any sklearn-compatible estimator (anything with `.fit()` / `.predict()`)
+- Verbose mode logs train score, val score, fit time, and a basic overfit warning if `train_score - val_score > threshold`
+- Returns a result object rather than mutating the model, keeping the API side-effect-free
+- Edge cases: gracefully handles `y` with class imbalance (logs a warning if the minority class is < 10% of total)
+
+**Example:**
+
+```python
+from sklearn.ensemble import RandomForestClassifier
+from ramentruck import broth
+
+result = broth(
+    RandomForestClassifier(n_estimators=100),
+    X_train, y_train,
+    X_val, y_val,
+    metrics=["accuracy", "f1", "roc_auc"],
+)
+
+print(result.val_score)   # e.g., 0.87
+print(result.metrics)     # {"accuracy": 0.87, "f1": 0.85, "roc_auc": 0.91}
+```
+
+---
+
+### Core: `tare` — Hyperparameter Tuning
+
+**File:** `src/ramentruck/tare.py`
+
+Named for the concentrated seasoning added to ramen — small adjustments with outsized impact. `tare` is the hyperparameter tuning wrapper. Supports grid search, randomized search, and Optuna (when available as an optional dep).
+
+**Planned signature:**
+
+```python
+def tare(
+    model,
+    param_grid: dict,
+    X: pd.DataFrame | np.ndarray,
+    y: pd.Series | np.ndarray,
+    *,
+    method: str = "grid",          # "grid", "random", "optuna"
+    cv: int = 5,
+    scoring: str = "accuracy",
+    n_iter: int = 50,              # for "random" and "optuna" only
+    n_jobs: int = -1,
+    verbose: bool = True,
+    random_state: int | None = 42,
+) -> TareResult
+```
+
+**`TareResult`** — result container holding:
+
+| Field | Description |
+|---|---|
+| `best_params` | Dict of best hyperparameter values |
+| `best_score` | Best CV score achieved |
+| `best_model` | Refitted model using best params |
+| `cv_results` | Full cross-validation results DataFrame |
+| `search_time_s` | Wall-clock seconds for the full search |
+
+**Method dispatch:**
+
+| `method` | Backend | Notes |
+|---|---|---|
+| `"grid"` | `GridSearchCV` | Exhaustive search over all combinations |
+| `"random"` | `RandomizedSearchCV` | Randomly samples `n_iter` combinations |
+| `"optuna"` | `optuna` (optional dep) | Bayesian optimization — most efficient for large spaces |
+
+**Design notes:**
+
+- `n_jobs=-1` by default — use all available cores
+- `random_state=42` default for reproducibility
+- Verbose mode logs the best params and best score at completion
+- For `"optuna"`, raise a clear `ImportError` with install instructions if Optuna is not installed
+- `cv_results` is always returned as a sorted DataFrame (best score first) for easy inspection
+
+**Example:**
+
+```python
+from ramentruck import tare
+from sklearn.ensemble import GradientBoostingClassifier
+
+result = tare(
+    GradientBoostingClassifier(),
+    param_grid={"n_estimators": [50, 100, 200], "learning_rate": [0.01, 0.1, 0.3]},
+    X_train, y_train,
+    method="random",
+    n_iter=20,
+    scoring="roc_auc",
+)
+
+print(result.best_params)  # {"n_estimators": 100, "learning_rate": 0.1}
+print(result.best_score)   # 0.93
+```
+
+---
+
+### Core: `soft_boiled_egg` — Cross-Validation
+
+**File:** `src/ramentruck/soft_boiled_egg.py`
+
+Named for a technique that is entirely about timing and calibration. `soft_boiled_egg` is the cross-validation module. Supports k-fold, stratified k-fold, and time-series splits. Critically, it surfaces learning curves and overfit diagnostics as first-class outputs — not just a score.
+
+**Planned signature:**
+
+```python
+def soft_boiled_egg(
+    model,
+    X: pd.DataFrame | np.ndarray,
+    y: pd.Series | np.ndarray,
+    *,
+    strategy: str = "stratified",    # "kfold", "stratified", "timeseries"
+    n_splits: int = 5,
+    scoring: str | list[str] = "accuracy",
+    learning_curve: bool = False,
+    train_sizes: list[float] | None = None,   # for learning curves
+    shuffle: bool = True,
+    random_state: int | None = 42,
+    verbose: bool = True,
+) -> EggResult
+```
+
+**`EggResult`** — result container holding:
+
+| Field | Description |
+|---|---|
+| `scores` | Array of per-fold scores |
+| `mean_score` | Mean CV score |
+| `std_score` | Standard deviation of CV scores |
+| `fold_results` | DataFrame — one row per fold, columns per metric |
+| `learning_curve_df` | Learning curve data (only when `learning_curve=True`) |
+
+**Strategy dispatch:**
+
+| `strategy` | Backend | Notes |
+|---|---|---|
+| `"kfold"` | `KFold` | Standard k-fold |
+| `"stratified"` | `StratifiedKFold` | Preserves class balance per fold — default |
+| `"timeseries"` | `TimeSeriesSplit` | No shuffling; respects temporal order |
+
+**Learning curve (`learning_curve=True`):**
+
+Returns a `learning_curve_df` DataFrame with columns `train_size`, `train_score_mean`, `train_score_std`, `val_score_mean`, `val_score_std`. This is the primary diagnostic for spotting underfitting (both curves low) vs. overfitting (train high, val low) vs. good generalization (both high and converging).
+
+`train_sizes` defaults to `[0.1, 0.2, 0.4, 0.6, 0.8, 1.0]` if not specified.
+
+**Design notes:**
+
+- `"stratified"` is the default — it's almost always the right choice for classification
+- `"timeseries"` must not shuffle; warn if `shuffle=True` is passed alongside it
+- Verbose mode prints mean ± std per fold and flags if std > 0.05 (high variance)
+- Edge cases: warn if `n_splits` > number of samples in the minority class
+
+**Example:**
+
+```python
+from ramentruck import soft_boiled_egg
+
+result = soft_boiled_egg(
+    my_model,
+    X, y,
+    strategy="stratified",
+    n_splits=5,
+    scoring=["accuracy", "f1"],
+    learning_curve=True,
+)
+
+print(f"{result.mean_score:.3f} ± {result.std_score:.3f}")
+print(result.learning_curve_df)
+```
+
+---
+
+### Core: `chashu` — Model Persistence
+
+**File:** `src/ramentruck/chashu.py`
+
+Named for the slow-cooked, perfectly preserved pork topping. `chashu` handles model serialization and persistence — wrapping joblib (or pickle) with metadata versioning so you always know what you saved, when, and with what params.
+
+**Planned signatures:**
+
+```python
+def save(
+    model,
+    path: str | Path,
+    *,
+    metadata: dict | None = None,
+    overwrite: bool = False,
+) -> Path
+
+def load(
+    path: str | Path,
+    *,
+    verify: bool = True,
+) -> ChashuBundle
+
+def list_models(directory: str | Path) -> pd.DataFrame
+```
+
+**`ChashuBundle`** — the loaded artifact:
+
+| Field | Description |
+|---|---|
+| `model` | The deserialized model object |
+| `metadata` | Dict of saved metadata |
+| `saved_at` | ISO timestamp of when the model was saved |
+| `ramentruck_version` | `ramentruck.__version__` at save time |
+| `python_version` | Python version at save time |
+| `sklearn_version` | scikit-learn version at save time |
+
+**Storage format:**
+
+Each saved model is a directory (or a single `.chashu` bundle file — TBD at implementation) containing:
+
+```
+my_model.chashu/
+├── model.joblib     # the serialized model
+└── meta.json        # metadata, versions, timestamps
+```
+
+**`list_models(directory)`** — scans a directory and returns a DataFrame summarizing all saved `.chashu` bundles: path, saved_at, model class name, and any user-supplied metadata fields.
+
+**Design notes:**
+
+- Always saves `ramentruck_version`, `python_version`, and `sklearn_version` automatically — no manual tracking required
+- `overwrite=False` by default — raises if the path already exists to prevent silent clobbers
+- `verify=True` on load — checks that the saved sklearn version matches the current environment and warns on mismatch
+- Avoid `pickle` directly; prefer `joblib` for large numpy arrays (faster, more memory-efficient)
+- User-supplied `metadata` dict is merged with automatic fields; user keys must not collide with reserved names
+
+**Example:**
+
+```python
+from ramentruck import chashu
+
+# Save
+chashu.save(
+    fitted_model,
+    "models/rf_v1.chashu",
+    metadata={"dataset": "prices_2025", "val_auc": 0.93},
+)
+
+# Load
+bundle = chashu.load("models/rf_v1.chashu")
+model = bundle.model
+print(bundle.saved_at)        # "2026-06-17T14:32:01"
+print(bundle.metadata)        # {"dataset": "prices_2025", "val_auc": 0.93, ...}
+
+# Inventory
+df = chashu.list_models("models/")
+```
+
+---
+
+### Explainability: `nori` — Model Explainability
+
+**File:** `src/ramentruck/nori.py`  
+**Requires:** `pip install ramentruck[explain]` (pulls in `shap`)
+
+Named for the thin sheet of nori on top of the bowl — a thin layer that adds a distinct layer of insight to whatever is beneath it. `nori` wraps SHAP to make model explainability approachable without hiding the mechanics.
+
+**Planned signatures:**
+
+```python
+def explain(
+    model,
+    X: pd.DataFrame | np.ndarray,
+    *,
+    method: str = "auto",        # "auto", "tree", "linear", "kernel", "deep"
+    sample_n: int | None = 200,  # subsample X for kernel/deep methods
+    plot: bool = True,
+    plot_type: str = "summary",  # "summary", "bar", "waterfall", "beeswarm"
+    verbose: bool = True,
+) -> NoriResult
+
+def feature_importance(
+    model,
+    X: pd.DataFrame | np.ndarray,
+    *,
+    top_n: int | None = 20,
+    normalize: bool = True,
+) -> pd.DataFrame
+```
+
+**`NoriResult`** — result container:
+
+| Field | Description |
+|---|---|
+| `shap_values` | Raw SHAP values array or list (for multi-class) |
+| `expected_value` | SHAP base value(s) |
+| `importance_df` | DataFrame of mean absolute SHAP values per feature, sorted descending |
+| `explainer` | The underlying SHAP `Explainer` object |
+
+**`method` auto-selection logic:**
+
+| `method` | Condition |
+|---|---|
+| `"tree"` | Model has `feature_importances_` or is a tree-based estimator |
+| `"linear"` | Model has `coef_` (linear models) |
+| `"deep"` | Model is a Keras/PyTorch neural network |
+| `"kernel"` | Fallback for any other model (slowest — subsamples by default) |
+
+**Plot types (when `plot=True`):**
+
+| `plot_type` | Output |
+|---|---|
+| `"summary"` | SHAP summary dot plot (all features, all observations) |
+| `"bar"` | Mean absolute SHAP bar chart |
+| `"waterfall"` | Single-observation waterfall chart (first sample by default) |
+| `"beeswarm"` | Beeswarm plot — best for distribution of impact per feature |
+
+**Design notes:**
+
+- `sample_n=200` default for `"kernel"` and `"deep"` methods — SHAP kernel explainer is O(N²) and unusable on large datasets without sampling
+- `feature_importance()` is a simpler entry point that returns a clean DataFrame without requiring knowledge of SHAP internals
+- For tree models, `TreeExplainer` is exact (not sampled); `sample_n` is ignored
+- Raise a clear `ImportError` with `pip install ramentruck[explain]` if `shap` is not installed
+
+**Example:**
+
+```python
+from ramentruck import nori
+
+result = nori.explain(
+    fitted_rf,
+    X_val,
+    method="tree",
+    plot=True,
+    plot_type="summary",
+)
+
+print(result.importance_df.head(10))
+
+imp = nori.feature_importance(fitted_rf, X_val, top_n=10)
+```
+
+---
+
+### Experiment Tracking: `miso` — Experiment Tracking
+
+**File:** `src/ramentruck/miso.py`  
+**Requires:** `pip install ramentruck[tracking]` (pulls in `mlflow`)
+
+Named for fermented miso paste — the result of accumulated wisdom over many runs. `miso` is the experiment tracking wrapper. Logs params, metrics, artifacts, and model objects to MLflow (default) or Weights & Biases (when available).
+
+**Planned signatures:**
+
+```python
+# Context manager (recommended)
+with miso.run(experiment="my_experiment", run_name="rf_v1") as run:
+    run.log_params({"n_estimators": 100, "max_depth": 5})
+    run.log_metrics({"accuracy": 0.87, "f1": 0.85})
+    run.log_model(fitted_model, artifact_name="model")
+    run.log_dataframe(X_val, artifact_name="validation_set")
+
+# Convenience wrapper — integrates with broth/tare results
+def log_broth(result: BrothResult, experiment: str, run_name: str) -> str
+def log_tare(result: TareResult,  experiment: str, run_name: str) -> str
+```
+
+**`MisoRun`** — context manager object with:
+
+| Method | Description |
+|---|---|
+| `.log_params(dict)` | Log hyperparameters |
+| `.log_metrics(dict)` | Log scalar metrics |
+| `.log_model(model, artifact_name)` | Serialize and log a model artifact |
+| `.log_dataframe(df, artifact_name)` | Log a DataFrame as a CSV artifact |
+| `.log_figure(fig, artifact_name)` | Log a matplotlib Figure |
+| `.run_id` | The MLflow run ID |
+| `.experiment_id` | The MLflow experiment ID |
+
+**`log_broth()` and `log_tare()`** — one-line convenience wrappers that take a `BrothResult` or `TareResult` and log all fields automatically without boilerplate.
+
+**Backend selection:**
+
+```python
+import ramentruck.miso as miso
+
+miso.set_backend("mlflow")   # default
+miso.set_backend("wandb")    # requires wandb installed
+```
+
+**Design notes:**
+
+- Context manager pattern is preferred — it guarantees the run is closed (even on exceptions)
+- MLflow is the default backend; W&B is optional (raise a clear `ImportError` if not installed)
+- `log_broth` / `log_tare` are sugar for the most common pattern — integrate tightly with `broth` and `tare` result objects
+- Raise a clear `ImportError` with `pip install ramentruck[tracking]` if `mlflow` is not installed
+
+**Example:**
+
+```python
+from ramentruck import miso, broth
+
+result = broth(my_model, X_train, y_train, X_val, y_val)
+
+miso.log_broth(result, experiment="price_classifier", run_name="rf_baseline")
+
+# Or manually with full control
+with miso.run(experiment="price_classifier", run_name="rf_v2") as run:
+    run.log_params({"n_estimators": 200})
+    run.log_metrics({"val_auc": 0.93})
+    run.log_model(result.model, "random_forest")
+```
+
+---
+
+### Deep Learning: `tonkotsu` — Deep Learning Interface
+
+**File:** `src/ramentruck/tonkotsu.py`  
+**Requires:** `pip install ramentruck[deep]` (pulls in `torch` or `tensorflow` — TBD)
+
+Named for the heavy, rich, long-cooked pork-bone broth that takes all day and rewards patience. `tonkotsu` is the deep learning interface — wrapping PyTorch or TensorFlow/Keras for common architectures with consistent training loops, regularization hooks, and callback support.
+
+**Primary design decision (pre-implementation):** Default to **Keras functional API**, not Sequential. The functional API is more flexible, handles multi-input/multi-output architectures, and is what serious practitioners use.
+
+---
+
+#### Architecture Builders
+
+**Planned signatures:**
+
+```python
+# Dense feedforward network (most common starting point)
+def build_dense(
+    input_dim: int,
+    hidden_layers: list[int],          # e.g. [128, 64, 32]
+    output_dim: int,
+    *,
+    activation: str = "relu",
+    output_activation: str = "sigmoid",  # "sigmoid" for binary, "softmax" for multi-class
+    dropout_rate: float = 0.0,
+    l2_lambda: float = 0.0,
+    batch_norm: bool = False,
+) -> keras.Model
+
+# 1D convolutional model (time-series / sequence data)
+def build_conv1d(
+    input_shape: tuple[int, int],      # (timesteps, features)
+    filters: list[int],
+    kernel_sizes: list[int],
+    dense_layers: list[int],
+    output_dim: int,
+    *,
+    dropout_rate: float = 0.0,
+    l2_lambda: float = 0.0,
+) -> keras.Model
+```
+
+Both builders use the **functional API** internally. `build_dense` is the go-to entry point for tabular data (which is the ThaiTruck → RamenTruck pipeline target).
+
+---
+
+#### Training Loop
+
+**Planned signature:**
+
+```python
+def simmer(
+    model: keras.Model,
+    X_train, y_train,
+    X_val=None, y_val=None,
+    *,
+    epochs: int = 100,
+    batch_size: int = 32,
+    optimizer: str | keras.Optimizer = "adam",
+    loss: str = "binary_crossentropy",
+    metrics: list[str] = ["accuracy"],
+    early_stopping: bool = True,
+    patience: int = 10,
+    checkpoint_path: str | Path | None = None,
+    callbacks: list | None = None,
+    verbose: int = 1,
+) -> SipResult
+```
+
+`simmer` is the training entry point — named because great broth simmers; it is not rushed.
+
+**`SipResult`** — result container:
+
+| Field | Description |
+|---|---|
+| `model` | The trained Keras model |
+| `history` | Keras `History` object (loss and metric curves per epoch) |
+| `history_df` | `history.history` as a DataFrame (train and val columns per metric) |
+| `best_epoch` | Epoch at which best val metric occurred (when early stopping used) |
+| `stopped_early` | Boolean — did early stopping fire? |
+| `train_time_s` | Wall-clock training time |
+
+**Default callbacks wired in automatically:**
+
+| Callback | Default Condition |
+|---|---|
+| `EarlyStopping` | When `early_stopping=True` — monitors `val_loss`, `restore_best_weights=True` |
+| `ModelCheckpoint` | When `checkpoint_path` is provided — saves best weights only |
+
+**`EveryNEpochs` callback** — a built-in convenience callback:
+
+```python
+from ramentruck.tonkotsu import EveryNEpochs
+
+cb = EveryNEpochs(n=10, fn=lambda epoch, logs: print(f"Epoch {epoch}: {logs}"))
+```
+
+Fires a user-supplied function every N epochs. Useful for custom logging, metric collection, or live plot updates without writing a full `Callback` subclass.
+
+---
+
+#### Regularization Utilities
+
+```python
+def l2_penalty(lambda_: float) -> keras.regularizers.L2
+    # Thin wrapper — creates the regularizer and applies consistent naming
+
+def dropout_schedule(
+    initial_rate: float,
+    final_rate: float,
+    n_layers: int,
+) -> list[float]
+    # Returns a linearly interpolated dropout rate per layer
+    # e.g. dropout_schedule(0.1, 0.4, 4) → [0.1, 0.2, 0.3, 0.4]
+```
+
+---
+
+#### Learning Curve Visualization
+
+```python
+def plot_history(
+    result: SipResult,
+    metrics: list[str] | None = None,   # defaults to all metrics in history
+    figsize: tuple = (12, 4),
+) -> matplotlib.figure.Figure
+```
+
+Plots train vs. validation curves for each metric in the history. The primary visual tool for diagnosing:
+
+- **Underfitting** — both train and val loss are high and flat
+- **Overfitting** — train loss falls, val loss diverges or plateaus
+- **Good generalization** — both curves fall and converge
+
+Returns a `matplotlib.Figure` so it can be saved, displayed inline, or logged via `miso`.
+
+---
+
+**Full example (binary classification, tabular data):**
+
+```python
+from ramentruck.tonkotsu import build_dense, simmer, plot_history
+
+model = build_dense(
+    input_dim=X_train.shape[1],
+    hidden_layers=[128, 64, 32],
+    output_dim=1,
+    activation="relu",
+    output_activation="sigmoid",
+    dropout_rate=0.3,
+    l2_lambda=0.001,
+)
+
+model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+
+result = simmer(
+    model,
+    X_train, y_train,
+    X_val, y_val,
+    epochs=200,
+    batch_size=32,
+    early_stopping=True,
+    patience=15,
+    checkpoint_path="checkpoints/best_model.keras",
+)
+
+print(f"Stopped at epoch {result.best_epoch}")
+fig = plot_history(result)
+fig.savefig("learning_curves.png")
+```
+
+---
+
+### To Be Named
+
+The following modules are planned but have no final names yet:
+
+| Concept | Description |
+|---|---|
+| **Feature engineering pipeline** | Automated or recipe-driven feature construction: polynomial features, interaction terms, target encoding, binning, and datetime feature extraction. Complementary to ThaiTruck's `orange_chicken` (which cleans) — this one creates new features. |
+| **Ensemble methods module** | Wrappers for stacking, blending, and voting ensembles. Takes multiple fitted models and combines their predictions. Should support both classification and regression. |
+| **Probability calibration module** | Wraps `CalibratedClassifierCV` and related methods. Binary classifiers often output poorly calibrated probabilities — this module fixes that. Includes calibration curve visualization. |
+| **Prediction / inference API wrapper** | A thin serving layer that wraps a fitted model for prediction with input validation, schema checking, and optional `chashu`-based loading. The "output window" of the RamenTruck pipeline. |
+
+Names should follow the ramen theme and fit the metaphor (e.g., noodles = structural foundation, toppings = additions on top of the base, etc.).
+
+---
+
+## Design Principles
+
+### Edge Cases Are First-Class
+
+The following should be handled gracefully and explicitly — not ignored, not crashed on:
+
+- **Small N** — fewer than ~50 samples in train. `broth` should warn; `soft_boiled_egg` should handle gracefully without crashing on `n_splits > minority_class_size`
+- **Class imbalance** — when minority class < 10%, `broth` logs a warning. `soft_boiled_egg` defaults to `StratifiedKFold` to preserve balance per fold
+- **Noisy labels** — no automatic detection (it's hard), but `nori` SHAP plots help identify mislabeled or anomalous samples via unexpectedly high SHAP magnitudes
+- **Overfit diagnosis** — `soft_boiled_egg` with `learning_curve=True` and `tonkotsu`'s `plot_history` are the primary tools
+
+### No Mutation
+
+Following ThaiTruck's convention: nothing mutates its inputs. `broth`, `tare`, and `soft_boiled_egg` all return result containers rather than modifying passed-in model objects.
+
+### Consistent Result Containers
+
+Every module returns a typed result object (dataclass or namedtuple) rather than bare tuples or dicts. This makes results inspectable, IDE-friendly, and easy to pass to `miso` for logging.
+
+### sklearn Compatibility
+
+Every model-accepting function works with any sklearn-compatible estimator (implements `.fit()` / `.predict()`). This includes sklearn's own estimators, XGBoost, LightGBM, CatBoost, and any custom estimator that follows the sklearn interface.
+
+---
+
+## Composing with the Fleet
+
+RamenTruck, ThaiTruck, and SushiTruck are **fully independent packages**. RamenTruck has no dependency on ThaiTruck or SushiTruck and imports nothing from them. It accepts `pd.DataFrame` and numpy arrays — whatever the caller passes in. Where those DataFrames came from is not RamenTruck's concern.
+
+The composition happens at the **application layer** in the user's code:
+
+```python
+# This is USER code — not RamenTruck internals.
+# Each package is imported independently; none calls another.
+
+import pandas as pd
+from thaitruck import fried_rice, orange_chicken, larb
+from ramentruck import broth, soft_boiled_egg, nori, chashu
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+
+# --- ThaiTruck produces a clean DataFrame ---
+raw = orange_chicken(raw_df, heat=3)
+merged = fried_rice(raw, earnings_df, freq="D")
+profile = larb(merged, heat=3)  # spot-check
+
+# --- RamenTruck receives DataFrames / arrays ---
+X = merged.drop(columns=["target"])
+y = merged["target"]
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+result = broth(
+    RandomForestClassifier(),
+    X_train, y_train,
+    X_val, y_val,
+    metrics=["accuracy", "roc_auc"],
+)
+
+cv = soft_boiled_egg(result.model, X, y, strategy="stratified", learning_curve=True)
+
+nori.explain(result.model, X_val, method="tree", plot=True)
+
+chashu.save(result.model, "models/rf_v1.chashu", metadata={"val_auc": result.metrics["roc_auc"]})
+```
+
+---
+
+## The Food Truck Fleet
+
+| Package | Status | Focus |
+|---|---|---|
+| **thaitruck** | Live on PyPI (v0.2.2) | Batch DataFrame cleaning, merging, profiling, caching |
+| **sushitruck** | PyPI name secured | Streaming ingestion, API connectors |
+| **ramentruck** | PyPI name secured (v0.2.0 early development) | ML/AI toolkit - dataset inspection now; training, tuning, validation, explainability, deep learning planned |
+| **bentotruck** | Planned | Statistical analysis, feature engineering, and predictive analytics |
+
+Each package is fully independent — none imports from another. They compose at the application layer through `pd.DataFrame` and numpy arrays. SushiTruck produces them. ThaiTruck transforms them. RamenTruck models them. The user's code is the only thing that knows about all three.
+
+---
+
+## Build & Publish Plan
+
+### Before Next Feature Release
+
+1. Declare runtime dependencies in `pyproject.toml` (`pandas`, `numpy`, and later `scikit-learn` when core ML modules land)
+2. Implement core modules: `broth`, `tare`, `soft_boiled_egg`, `chashu`
+3. Add tests - one file per new module
+4. Declare optional extras in `pyproject.toml` (`explain`, `tracking`, `deep`, `all`)
+5. Add import guards in `nori.py`, `miso.py`, `tonkotsu.py`
+6. Add `py.typed` marker (PEP 561) for type-checker support
+7. Add `CHANGELOG.md`
+8. Add `.github/workflows/tests.yml` - pytest on Python 3.9/3.10/3.11/3.12
+
+### Build commands
+
+```bash
+python -m build          # dist/*.whl + dist/*.tar.gz
+twine check dist/*       # verify metadata
+twine upload dist/*      # publish to PyPI
+```
+
+### Version bump (two places)
+
+- `pyproject.toml` → `version = "x.y.z"`
+- `src/ramentruck/__init__.py` → `__version__ = "x.y.z"`
+
+---
+
+*Last updated: 2026-07-07*
