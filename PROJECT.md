@@ -1,6 +1,6 @@
 # RamenTruck — Project Document
 
-> **Current version:** 0.2.0 | **Python:** >= 3.9 | **Status:** Early development
+> **Current version:** 0.3.0 | **Python:** >= 3.9 | **Status:** Early development
 
 ---
 
@@ -30,7 +30,7 @@
 
 ## What RamenTruck Is
 
-RamenTruck is a deep, layered ML/AI toolkit. The current public entry point is `slurp()`, which inspects a pandas DataFrame and returns a `DatasetMenu` with dataset statistics, target/problem inference, class imbalance detection, and preprocessing recommendations. The broader roadmap includes model training, hyperparameter tuning, cross-validation, explainability, experiment tracking, model persistence, and deep learning architectures.
+RamenTruck is a deep, layered ML/AI toolkit. The current public entry points are `slurp()`, which inspects a pandas DataFrame and returns a `DatasetMenu`, and `Broth`, a training wrapper for scikit-learn compatible estimators that returns a `BrothResult`. The broader roadmap includes hyperparameter tuning, cross-validation, explainability, experiment tracking, model persistence, and deep learning architectures.
 
 RamenTruck is **not** a thin scikit-learn wrapper or a tutorial notebook. It is designed with genuine ML depth — handling edge cases like small-N datasets, class imbalance, noisy labels, and overfit diagnosis as first-class concerns rather than afterthoughts.
 
@@ -59,17 +59,19 @@ The guiding design values:
 | Item | Status |
 |---|---|
 | PyPI name `ramentruck` | Secured |
-| Version | 0.2.0 |
-| `src/ramentruck/__init__.py` | Exists - exports `slurp`, `DatasetMenu`, `ChefRecommendation`, and `__version__ = "0.2.0"` |
+| Version | 0.3.0 |
+| `src/ramentruck/__init__.py` | Exists - exports `slurp`, `DatasetMenu`, `ChefRecommendation`, `Broth`, `BrothResult`, and `__version__ = "0.3.0"` |
 | `src/ramentruck/noodles.py` | Implemented - dataset inspection and recommendation engine |
-| `pyproject.toml` | Exists - hatchling build, Python >= 3.9, MIT license, `dev` extra |
-| `README.md` | Exists - current `slurp()` usage, planned module table, install instructions, fleet context |
-| Core ML modules | Planned - `broth`, `tare`, `soft_boiled_egg`, `chashu` not yet implemented |
+| `src/ramentruck/broth.py` | Implemented - training wrapper with `fit`, `predict`, `score`, metrics, timing, and overfitting warning |
+| `src/ramentruck/results.py` | Implemented - shared `BrothResult` container |
+| `pyproject.toml` | Exists - hatchling build, Python >= 3.9, MIT license, runtime dependencies, and `dev` extra |
+| `README.md` | Exists - current `slurp()` and `Broth` usage, module table, install instructions, fleet context |
+| Core ML modules | `broth` implemented; `tare`, `soft_boiled_egg`, and `chashu` remain planned |
 | Optional modules | Planned - `nori`, `miso`, `tonkotsu` not yet implemented |
-| Tests | `tests/test_noodles.py` exists |
+| Tests | `tests/test_noodles.py` and `tests/test_broth.py` exist |
 | Optional extras in `pyproject.toml` | Only `dev` exists currently; `explain`, `tracking`, `deep`, and `all` are still planned |
 
-The package is no longer a pure stub. The current implemented workflow is dataset inspection through `slurp()`. Classical ML, persistence, explainability, tracking, and deep learning modules remain roadmap items.
+The package is no longer a pure stub. The current implemented workflows are dataset inspection through `slurp()` and estimator training through `Broth`. Tuning, persistence, explainability, tracking, and deep learning modules remain roadmap items.
 
 ---
 
@@ -85,7 +87,8 @@ RamenTruck/
 |   +-- ramentruck/
 |       +-- __init__.py         # public re-exports + __version__
 |       +-- noodles.py          # dataset inspection and preprocessing (implemented)
-|       +-- broth.py            # base model training / fitting wrapper (planned)
+|       +-- broth.py            # model training / evaluation wrapper (implemented)
+|       +-- results.py          # shared result containers (implemented)
 |       +-- tare.py             # hyperparameter tuning (planned)
 |       +-- soft_boiled_egg.py  # cross-validation (planned)
 |       +-- chashu.py           # model serialization + versioning (planned)
@@ -96,7 +99,7 @@ RamenTruck/
 +-- tests/
 |   +-- __init__.py
 |   +-- test_noodles.py         # implemented
-|   +-- test_broth.py           # planned
+|   +-- test_broth.py           # implemented
 |   +-- test_tare.py            # planned
 |   +-- test_soft_boiled_egg.py # planned
 |   +-- test_chashu.py          # planned
@@ -110,7 +113,7 @@ RamenTruck/
 
 ## Dependency & Extras Architecture
 
-The current package imports `pandas` and `numpy` from `noodles.py`, but `pyproject.toml` currently declares only the `dev` optional extra and no runtime dependencies. Before the next package release, runtime dependencies should be declared explicitly.
+The current package declares runtime dependencies for `numpy`, `pandas`, and `scikit-learn`, which match the implemented `noodles` and `broth` modules.
 
 The intended core package should stay lightweight: pandas, numpy, and scikit-learn for core data inspection and classical ML. Heavy dependencies such as PyTorch/TensorFlow, SHAP, MLflow, and W&B should remain opt-in extras.
 
@@ -197,57 +200,73 @@ menu = slurp(df, target="Purchased")
 
 **File:** `src/ramentruck/broth.py`
 
-The base model training and fitting wrapper. Everything in RamenTruck builds on `broth`. It wraps the scikit-learn `fit` / `predict` / `score` cycle with opinionated defaults, consistent logging, and hooks for validation tracking.
+The base model training wrapper. `Broth` wraps the scikit-learn `fit` / `predict` / `score` cycle with explicit validation, metric calculation, fit timing, and an overfitting warning when validation score materially trails training score.
 
-**Planned signature:**
+**Implemented API:**
 
 ```python
-def broth(
-    model,
-    X_train: pd.DataFrame | np.ndarray,
-    y_train: pd.Series | np.ndarray,
-    X_val: pd.DataFrame | np.ndarray | None = None,
-    y_val: pd.Series | np.ndarray | None = None,
-    *,
-    metrics: list[str] = ["accuracy"],
-    verbose: bool = True,
-) -> BrothResult
+class Broth:
+    def __init__(self, estimator) -> None: ...
+
+    def fit(
+        self,
+        X_train,
+        y_train,
+        X_val=None,
+        y_val=None,
+        *,
+        metrics: Iterable[str] | None = None,
+    ) -> BrothResult: ...
+
+    def predict(self, X): ...
+
+    def score(self, X, y, *, metric: str | None = None) -> float: ...
 ```
 
-**`BrothResult`** — a lightweight result container (dataclass or namedtuple) holding:
+**`BrothResult`** — implemented in `src/ramentruck/results.py` as a
+frozen, slots-based dataclass:
 
 | Field | Description |
 |---|---|
-| `model` | The fitted model object |
+| `model` | The fitted estimator |
 | `train_score` | Score on training data |
 | `val_score` | Score on validation data (if provided) |
-| `metrics` | Dict of computed metric name → value |
+| `metrics` | Dict of computed metric name -> value |
 | `fit_time_s` | Wall-clock seconds to fit |
 
-**Supported metrics** (via scikit-learn): `"accuracy"`, `"f1"`, `"roc_auc"`, `"precision"`, `"recall"`, `"mse"`, `"rmse"`, `"r2"`. Metric list is open-ended — any sklearn scorer string should work.
+**Supported metrics** (via scikit-learn metrics): `"accuracy"`, `"f1"`, `"roc_auc"`, `"precision"`, `"recall"`, `"mse"`, `"rmse"`, `"r2"`.
 
-**Design notes:**
+**Current behavior:**
 
 - Works with any sklearn-compatible estimator (anything with `.fit()` / `.predict()`)
-- Verbose mode logs train score, val score, fit time, and a basic overfit warning if `train_score - val_score > threshold`
-- Returns a result object rather than mutating the model, keeping the API side-effect-free
-- Edge cases: gracefully handles `y` with class imbalance (logs a warning if the minority class is < 10% of total)
+- Validates estimator API and matching `X` / `y` lengths
+- Calculates metrics on validation data when provided, otherwise on training data
+- Emits a `UserWarning` if `train_score - val_score > 0.10`
+- Uses `time.perf_counter()` for fit timing
+- Raises a descriptive `ValueError` for unsupported metrics
+- Supports `roc_auc` through `predict_proba()` or `decision_function()` when available
+- Distinguishes `metrics=None` from `metrics=[]`; an explicit empty list computes no extra metrics
+- Uses fitted estimator `classes_` for ROC AUC branching when available instead of relying only on the evaluation batch
+- Raises a descriptive `ValueError` when ROC AUC cannot be computed because the evaluation target lacks enough classes or a multiclass evaluation batch is missing fitted classes
 
 **Example:**
 
 ```python
 from sklearn.ensemble import RandomForestClassifier
-from ramentruck import broth
+from ramentruck import Broth
 
-result = broth(
-    RandomForestClassifier(n_estimators=100),
-    X_train, y_train,
-    X_val, y_val,
+trainer = Broth(RandomForestClassifier(n_estimators=100))
+result = trainer.fit(
+    X_train,
+    y_train,
+    X_val,
+    y_val,
     metrics=["accuracy", "f1", "roc_auc"],
 )
 
 print(result.val_score)   # e.g., 0.87
 print(result.metrics)     # {"accuracy": 0.87, "f1": 0.85, "roc_auc": 0.91}
+predictions = trainer.predict(X_val)
 ```
 
 ---
@@ -896,7 +915,7 @@ chashu.save(result.model, "models/rf_v1.chashu", metadata={"val_auc": result.met
 |---|---|---|
 | **thaitruck** | Live on PyPI (v0.2.2) | Batch DataFrame cleaning, merging, profiling, caching |
 | **sushitruck** | PyPI name secured | Streaming ingestion, API connectors |
-| **ramentruck** | PyPI name secured (v0.2.0 early development) | ML/AI toolkit - dataset inspection now; training, tuning, validation, explainability, deep learning planned |
+| **ramentruck** | PyPI name secured (v0.3.0 early development) | ML/AI toolkit - dataset inspection and training now; tuning, validation, explainability, and deep learning planned |
 | **bentotruck** | Planned | Statistical analysis, feature engineering, and predictive analytics |
 
 Each package is fully independent — none imports from another. They compose at the application layer through `pd.DataFrame` and numpy arrays. SushiTruck produces them. ThaiTruck transforms them. RamenTruck models them. The user's code is the only thing that knows about all three.
@@ -907,14 +926,13 @@ Each package is fully independent — none imports from another. They compose at
 
 ### Before Next Feature Release
 
-1. Declare runtime dependencies in `pyproject.toml` (`pandas`, `numpy`, and later `scikit-learn` when core ML modules land)
-2. Implement core modules: `broth`, `tare`, `soft_boiled_egg`, `chashu`
-3. Add tests - one file per new module
-4. Declare optional extras in `pyproject.toml` (`explain`, `tracking`, `deep`, `all`)
-5. Add import guards in `nori.py`, `miso.py`, `tonkotsu.py`
-6. Add `py.typed` marker (PEP 561) for type-checker support
-7. Add `CHANGELOG.md`
-8. Add `.github/workflows/tests.yml` - pytest on Python 3.9/3.10/3.11/3.12
+1. Implement remaining core modules: `tare`, `soft_boiled_egg`, `chashu`
+2. Add tests for each new module
+3. Declare optional extras in `pyproject.toml` (`explain`, `tracking`, `deep`, `all`)
+4. Add import guards in `nori.py`, `miso.py`, `tonkotsu.py`
+5. Add `py.typed` marker (PEP 561) for type-checker support
+6. Add `CHANGELOG.md`
+7. Add `.github/workflows/tests.yml` - pytest on Python 3.9/3.10/3.11/3.12
 
 ### Build commands
 
@@ -932,3 +950,5 @@ twine upload dist/*      # publish to PyPI
 ---
 
 *Last updated: 2026-07-07*
+
+
