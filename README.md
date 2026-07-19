@@ -38,7 +38,10 @@ infrastructure and more time building better models.
 # Getting Started
 
 The current public entry points are **`slurp()`** for dataset inspection
-and **`Broth`** for classical model training.
+and **`Broth`** for classical model training. A shared **`diagnostics`**
+engine (`DiagnosticEngine`, `DiagnosticReport`, `Recommendation`) is also
+available as reusable infrastructure for model-quality guidance; it is
+standalone for now and not yet wired into `Broth` or other modules.
 
 Dataset inspection:
 
@@ -79,6 +82,18 @@ predictions = trainer.predict(X_val)
 score = trainer.score(X_val, y_val, metric="accuracy")
 ```
 
+Deterministic diagnostics (standalone, not yet wired into `Broth`):
+
+```python
+from ramentruck import DiagnosticEngine
+
+report = DiagnosticEngine().evaluate(
+    train_score=0.96,
+    validation_score=0.80,
+)
+print(report.chef_report())
+```
+
 ---
 
 # Modules
@@ -86,6 +101,7 @@ score = trainer.score(X_val, y_val, metric="accuracy")
 | Module | Purpose |
 |---------|---------|
 | **noodles** | Dataset inspection and preprocessing (`slurp`, scaling, encoding, missing values, dataset splitting) |
+| **diagnostics** | Shared deterministic diagnostics (`DiagnosticEngine`, `DiagnosticReport`, `Recommendation`) — standalone, not yet consumed by other modules |
 | **broth** | Model training and evaluation (`Broth`, `BrothResult`) |
 | **tare** | Hyperparameter tuning |
 | **soft_boiled_egg** | Cross-validation and learning curves |
@@ -162,6 +178,7 @@ Current functionality includes:
 
 - Dataset inspection with `slurp()`
 - Classical model training with `Broth`
+- Shared deterministic diagnostics with `DiagnosticEngine` and `DiagnosticReport` (standalone; not yet used by `Broth`)
 - Shared `DatasetMenu`, `ChefRecommendation`, and `BrothResult` objects
 - Intelligent preprocessing recommendations
 - Comprehensive unit testing for implemented modules
