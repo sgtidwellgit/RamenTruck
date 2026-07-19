@@ -13,6 +13,7 @@
 5. [Dependency & Extras Architecture](#dependency--extras-architecture)
 6. [The Bowl - Implemented and Planned Modules](#the-bowl--implemented-and-planned-modules)
    - [Implemented: `noodles`](#implemented-noodles--dataset-inspection--preprocessing)
+   - [Shared: `diagnostics`](#shared-diagnostics--deterministic-diagnostic-engine)
    - [Core: `broth`](#core-broth--the-foundation)
    - [Core: `tare`](#core-tare--hyperparameter-tuning)
    - [Core: `soft_boiled_egg`](#core-soft_boiled_egg--cross-validation)
@@ -60,18 +61,21 @@ The guiding design values:
 |---|---|
 | PyPI name `ramentruck` | Secured |
 | Version | 0.3.0 |
-| `src/ramentruck/__init__.py` | Exists - exports `slurp`, `DatasetMenu`, `ChefRecommendation`, `Broth`, `BrothResult`, and `__version__ = "0.3.0"` |
+| `src/ramentruck/__init__.py` | Exists - exports `slurp`, `DatasetMenu`, `ChefRecommendation`, `Broth`, `BrothResult`, `DiagnosticEngine`, `DiagnosticReport`, `DiagnosticCategory`, `DiagnosticSeverity`, `Recommendation`, and `__version__ = "0.3.0"` |
 | `src/ramentruck/noodles.py` | Implemented - dataset inspection and recommendation engine |
+| `src/ramentruck/diagnostics.py` | Implemented - shared deterministic diagnostics engine and immutable report types; standalone, not yet consumed by `broth` or other modules |
 | `src/ramentruck/broth.py` | Implemented - training wrapper with `fit`, `predict`, `score`, metrics, timing, and overfitting warning |
 | `src/ramentruck/results.py` | Implemented - shared `BrothResult` container |
 | `pyproject.toml` | Exists - hatchling build, Python >= 3.9, MIT license, runtime dependencies, and `dev` extra |
 | `README.md` | Exists - current `slurp()` and `Broth` usage, module table, install instructions, fleet context |
 | Core ML modules | `broth` implemented; `tare`, `soft_boiled_egg`, and `chashu` remain planned |
 | Optional modules | Planned - `nori`, `miso`, `tonkotsu` not yet implemented |
-| Tests | `tests/test_noodles.py` and `tests/test_broth.py` exist |
+| Tests | `tests/test_noodles.py`, `tests/test_broth.py`, and `tests/test_diagnostics.py` exist |
 | Optional extras in `pyproject.toml` | Only `dev` exists currently; `explain`, `tracking`, `deep`, and `all` are still planned |
 
-The package is no longer a pure stub. The current implemented workflows are dataset inspection through `slurp()` and estimator training through `Broth`. Tuning, persistence, explainability, tracking, and deep learning modules remain roadmap items.
+The package is no longer a pure stub. The current implemented workflows are dataset inspection through `slurp()` and estimator training through `Broth`. A shared `diagnostics` engine now exists alongside them as reusable infrastructure for future modules. Tuning, persistence, explainability, tracking, and deep learning modules remain roadmap items.
+
+> **Note on dataclasses:** result and report objects across the package (`DatasetMenu`, `ChefRecommendation`, `BrothResult`, `Recommendation`, `DiagnosticReport`) use `@dataclass(frozen=True)` without `slots=True`. The `slots` keyword on `dataclass()` requires Python 3.10+, and the package declares `requires-python = ">=3.9"`.
 
 ---
 
@@ -87,6 +91,7 @@ RamenTruck/
 |   +-- ramentruck/
 |       +-- __init__.py         # public re-exports + __version__
 |       +-- noodles.py          # dataset inspection and preprocessing (implemented)
+|       +-- diagnostics.py      # shared diagnostic rules and report types (implemented, standalone)
 |       +-- broth.py            # model training / evaluation wrapper (implemented)
 |       +-- results.py          # shared result containers (implemented)
 |       +-- tare.py             # hyperparameter tuning (planned)
@@ -99,6 +104,7 @@ RamenTruck/
 +-- tests/
 |   +-- __init__.py
 |   +-- test_noodles.py         # implemented
+|   +-- test_diagnostics.py     # implemented
 |   +-- test_broth.py           # implemented
 |   +-- test_tare.py            # planned
 |   +-- test_soft_boiled_egg.py # planned
@@ -194,6 +200,54 @@ menu = slurp(df, target="Purchased")
 **Tests:** `tests/test_noodles.py` covers the implemented behavior.
 
 ---
+
+### Shared: `diagnostics` — Deterministic Diagnostic Engine
+
+**File:** `src/ramentruck/diagnostics.py`
+
+`diagnostics` is a shared, typed rule engine for model-quality guidance
+(overfitting, underfitting, small datasets, high variance, class
+imbalance). It is designed to be reused by `broth`, `tare`,
+`soft_boiled_egg`, `tonkotsu`, and future modules so heuristic
+thresholds live in one place instead of being reimplemented per module.
+
+**It is currently standalone** — `broth.py` does not call into it yet
+and still contains its own independent overfitting/underfitting/small
+dataset checks. Wiring `Broth` (and future modules) to `DiagnosticEngine`
+is a follow-up task, not yet done.
+
+**Public API:**
+
+```python
+from ramentruck import (
+    DiagnosticCategory,
+    DiagnosticEngine,
+    DiagnosticReport,
+    DiagnosticSeverity,
+    Recommendation,
+)
+```
+
+**Implemented objects:**
+
+| Object | Description |
+|---|---|
+| `DiagnosticSeverity` | Enum with `INFO`, `WARNING`, and `ERROR` recommendation levels |
+| `DiagnosticCategory` | Enum of reusable categories: `OVERFITTING`, `UNDERFITTING`, `CLASS_IMBALANCE`, `SMALL_DATASET`, `HIGH_VARIANCE`, `UNKNOWN` |
+| `Recommendation` | Frozen dataclass containing message, category, severity, and bounded confidence (validated to `0.0`-`1.0`) |
+| `DiagnosticReport` | Frozen dataclass containing diagnosis text, typed recommendations, deterministic warnings, metadata, and `chef_report()` |
+| `DiagnosticEngine` | Deterministic evaluator for train/validation gaps, small datasets, variance, and class imbalance |
+
+**Current behavior:**
+
+- `evaluate()` takes `train_score`, `validation_score`, `class_imbalance`, `dataset_size`, and `variance`, and applies fixed thresholds: overfitting gap `> 0.10`, low score `< 0.70`, small dataset `< 100` rows, high variance `> 0.05`
+- Returns tuple-based recommendations and warnings so ordering is stable and immutable
+- Defensively freezes `metadata` (via `MappingProxyType`) so the report stays immutable in practice, even though it accepts a plain `dict` at construction
+- Produces a clean multiline `chef_report()` for human-readable summaries
+- Accumulates multiple simultaneous conditions in a deterministic order
+
+**Tests:** `tests/test_diagnostics.py` covers rule evaluation, confidence validation, immutability expectations, and `chef_report()` rendering.
+
 ---
 
 ### Core: `broth` — The Foundation
@@ -224,7 +278,8 @@ class Broth:
 ```
 
 **`BrothResult`** — implemented in `src/ramentruck/results.py` as a
-frozen, slots-based dataclass:
+frozen dataclass (no `slots=True`, to keep the package importable on
+Python 3.9):
 
 | Field | Description |
 |---|---|
@@ -949,6 +1004,6 @@ twine upload dist/*      # publish to PyPI
 
 ---
 
-*Last updated: 2026-07-07*
+*Last updated: 2026-07-09*
 
 

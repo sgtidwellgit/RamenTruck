@@ -22,7 +22,7 @@ import pandas as pd
 # ----------------------------------------------------------------------
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True)
 class ChefRecommendation:
     """Suggested preprocessing configuration."""
 
@@ -35,7 +35,7 @@ class ChefRecommendation:
     class_imbalance: bool
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True)
 class DatasetMenu:
     """Summary of a dataset returned from slurp()."""
 
