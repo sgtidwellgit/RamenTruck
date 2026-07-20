@@ -43,6 +43,13 @@ engine (`DiagnosticEngine`, `DiagnosticReport`, `Recommendation`) is also
 available as reusable infrastructure for model-quality guidance; it is
 standalone for now and not yet wired into `Broth` or other modules.
 
+Deep learning model building and training is available through
+**`tonkotsu`** (requires `pip install ramentruck[deep]`): a foundation of
+`build_dense`, `simmer`, `plot_history`, and an `EveryNEpochs` callback,
+plus a CNN family of composable residual blocks and a one-call
+`build_resnet` preset. An RNN/sequence family (LSTM, GRU, attention) is
+planned next.
+
 Dataset inspection:
 
 ```python
@@ -94,6 +101,16 @@ report = DiagnosticEngine().evaluate(
 print(report.chef_report())
 ```
 
+Deep learning (requires `pip install ramentruck[deep]`):
+
+```python
+from ramentruck import tonkotsu
+
+model = tonkotsu.build_resnet(input_shape=(64, 64, 3), classes=6)
+result = tonkotsu.simmer(model, X_train, y_train, X_val, y_val, epochs=50)
+fig = tonkotsu.plot_history(result)
+```
+
 ---
 
 # Modules
@@ -108,7 +125,7 @@ print(report.chef_report())
 | **chashu** | Model persistence and version management |
 | **nori** | Explainability (SHAP, feature importance, partial dependence) |
 | **miso** | Experiment tracking (MLflow / Weights & Biases) |
-| **tonkotsu** | Deep learning (TensorFlow / Keras architectures) |
+| **tonkotsu** | Deep learning (`build_dense`, `simmer`, `build_resnet`, and more; TensorFlow / Keras) |
 
 ---
 
@@ -131,10 +148,10 @@ scikit-learn
 Optional extras:
 
 ```bash
-pip install ramentruck[deep]
-pip install ramentruck[explain]
-pip install ramentruck[tracking]
-pip install ramentruck[all]
+pip install ramentruck[deep]       # tonkotsu: tensorflow, matplotlib
+pip install ramentruck[explain]    # nori (planned)
+pip install ramentruck[tracking]   # miso (planned)
+pip install ramentruck[all]        # everything (planned)
 ```
 
 ---
@@ -172,17 +189,18 @@ the others through standard pandas DataFrames and NumPy arrays.
 
 # Current Status
 
-**Version:** 0.3.0
+**Version:** 0.4.0
 
 Current functionality includes:
 
 - Dataset inspection with `slurp()`
 - Classical model training with `Broth`
 - Shared deterministic diagnostics with `DiagnosticEngine` and `DiagnosticReport` (standalone; not yet used by `Broth`)
-- Shared `DatasetMenu`, `ChefRecommendation`, and `BrothResult` objects
+- Deep learning with `tonkotsu`: `build_dense`, `simmer`, `plot_history`, `EveryNEpochs`, and a CNN family (`residual_identity_block`, `residual_conv_block`, `build_resnet`)
+- Shared `DatasetMenu`, `ChefRecommendation`, `BrothResult`, and `SipResult` objects
 - Intelligent preprocessing recommendations
 - Comprehensive unit testing for implemented modules
-- Hyperparameter tuning, cross-validation, persistence, and optional modules in active development
+- Hyperparameter tuning, cross-validation, persistence, and the remaining optional modules in active development
 
 ---
 

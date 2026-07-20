@@ -1,6 +1,6 @@
 # RamenTruck — Project Document
 
-> **Current version:** 0.3.0 | **Python:** >= 3.9 | **Status:** Early development
+> **Current version:** 0.4.0 | **Python:** >= 3.9 | **Status:** Early development
 
 ---
 
@@ -50,7 +50,7 @@ The guiding design values:
 - **Depth over convenience** — don't paper over important details; expose them cleanly
 - **Composable, not monolithic** — each module is independent and useful on its own
 - **Edge-case first** — small N, class imbalance, noisy labels, and overfit diagnosis are not footnotes
-- **Optional extras, not mandatory bloat** — PyTorch/TensorFlow and SHAP are heavy dependencies; they are opt-in
+- **Optional extras, not mandatory bloat** — TensorFlow and SHAP are heavy dependencies; they are opt-in
 - **Consistent with ThaiTruck** — similar module independence, same no-mutation conventions, same `src/` layout
 
 ---
@@ -60,20 +60,21 @@ The guiding design values:
 | Item | Status |
 |---|---|
 | PyPI name `ramentruck` | Secured |
-| Version | 0.3.0 |
-| `src/ramentruck/__init__.py` | Exists - exports `slurp`, `DatasetMenu`, `ChefRecommendation`, `Broth`, `BrothResult`, `DiagnosticEngine`, `DiagnosticReport`, `DiagnosticCategory`, `DiagnosticSeverity`, `Recommendation`, and `__version__ = "0.3.0"` |
+| Version | 0.4.0 |
+| `src/ramentruck/__init__.py` | Exists - exports `slurp`, `DatasetMenu`, `ChefRecommendation`, `Broth`, `BrothResult`, `DiagnosticEngine`, `DiagnosticReport`, `DiagnosticCategory`, `DiagnosticSeverity`, `Recommendation`, and `__version__ = "0.4.0"` (note: `tonkotsu` is not re-exported at the top level since it requires the optional `deep` extra — import it as `from ramentruck import tonkotsu`) |
 | `src/ramentruck/noodles.py` | Implemented - dataset inspection and recommendation engine |
 | `src/ramentruck/diagnostics.py` | Implemented - shared deterministic diagnostics engine and immutable report types; standalone, not yet consumed by `broth` or other modules |
 | `src/ramentruck/broth.py` | Implemented - training wrapper with `fit`, `predict`, `score`, metrics, timing, and overfitting warning |
 | `src/ramentruck/results.py` | Implemented - shared `BrothResult` container |
-| `pyproject.toml` | Exists - hatchling build, Python >= 3.9, MIT license, runtime dependencies, and `dev` extra |
+| `src/ramentruck/tonkotsu.py` | Implemented (foundation + CNN family) - `build_dense`, `simmer`, `plot_history`, `EveryNEpochs`, `residual_identity_block`, `residual_conv_block`, `build_resnet`; requires the `deep` extra (TensorFlow + matplotlib). RNN/sequence family still planned. |
+| `pyproject.toml` | Exists - hatchling build, Python >= 3.9, MIT license, runtime dependencies, `dev` extra, and `deep` extra |
 | `README.md` | Exists - current `slurp()` and `Broth` usage, module table, install instructions, fleet context |
 | Core ML modules | `broth` implemented; `tare`, `soft_boiled_egg`, and `chashu` remain planned |
-| Optional modules | Planned - `nori`, `miso`, `tonkotsu` not yet implemented |
-| Tests | `tests/test_noodles.py`, `tests/test_broth.py`, and `tests/test_diagnostics.py` exist |
-| Optional extras in `pyproject.toml` | Only `dev` exists currently; `explain`, `tracking`, `deep`, and `all` are still planned |
+| Optional modules | `tonkotsu` implemented (foundation + CNN family; RNN/sequence family planned); `nori` and `miso` not yet implemented |
+| Tests | `tests/test_noodles.py`, `tests/test_broth.py`, `tests/test_diagnostics.py`, and `tests/test_tonkotsu.py` exist |
+| Optional extras in `pyproject.toml` | `dev` and `deep` exist; `explain`, `tracking`, and `all` are still planned |
 
-The package is no longer a pure stub. The current implemented workflows are dataset inspection through `slurp()` and estimator training through `Broth`. A shared `diagnostics` engine now exists alongside them as reusable infrastructure for future modules. Tuning, persistence, explainability, tracking, and deep learning modules remain roadmap items.
+The package is no longer a pure stub. The current implemented workflows are dataset inspection through `slurp()`, estimator training through `Broth`, and deep learning model building/training through `tonkotsu` (dense networks and ResNet-style CNNs). A shared `diagnostics` engine exists as reusable infrastructure for future modules, not yet wired into `broth` or `tonkotsu`. Tuning, cross-validation, persistence, explainability, tracking, and the RNN/sequence half of deep learning remain roadmap items.
 
 > **Note on dataclasses:** result and report objects across the package (`DatasetMenu`, `ChefRecommendation`, `BrothResult`, `Recommendation`, `DiagnosticReport`) use `@dataclass(frozen=True)` without `slots=True`. The `slots` keyword on `dataclass()` requires Python 3.10+, and the package declares `requires-python = ">=3.9"`.
 
@@ -99,7 +100,7 @@ RamenTruck/
 |       +-- chashu.py           # model serialization + versioning (planned)
 |       +-- nori.py             # SHAP / explainability [explain extra] (planned)
 |       +-- miso.py             # experiment tracking [tracking extra] (planned)
-|       +-- tonkotsu.py         # deep learning [deep extra] (planned)
+|       +-- tonkotsu.py         # deep learning [deep extra] (implemented: foundation + CNN family)
 |       +-- sensei.py           # neural network advisor (planned)
 +-- tests/
 |   +-- __init__.py
@@ -111,7 +112,7 @@ RamenTruck/
 |   +-- test_chashu.py          # planned
 |   +-- test_nori.py            # planned
 |   +-- test_miso.py            # planned
-|   +-- test_tonkotsu.py        # planned
+|   +-- test_tonkotsu.py        # implemented (foundation + CNN family)
 +-- benchmarks/                 # pytest-benchmark regressions (future)
 ```
 
@@ -121,7 +122,7 @@ RamenTruck/
 
 The current package declares runtime dependencies for `numpy`, `pandas`, and `scikit-learn`, which match the implemented `noodles` and `broth` modules.
 
-The intended core package should stay lightweight: pandas, numpy, and scikit-learn for core data inspection and classical ML. Heavy dependencies such as PyTorch/TensorFlow, SHAP, MLflow, and W&B should remain opt-in extras.
+The intended core package should stay lightweight: pandas, numpy, and scikit-learn for core data inspection and classical ML. Heavy dependencies such as TensorFlow, SHAP, MLflow, and W&B should remain opt-in extras.
 
 ```toml
 [project]
@@ -135,7 +136,7 @@ dependencies = [
 dev      = ["pytest>=8.0", "pytest-cov"]
 explain  = ["shap>=0.44"]
 tracking = ["mlflow>=2.0"]
-deep     = ["tensorflow>=2.12"]  # or torch>=2.0 - TBD at implementation
+deep     = ["tensorflow>=2.12"]
 all      = ["ramentruck[explain,tracking,deep]"]
 ```
 
@@ -145,7 +146,7 @@ Install patterns:
 pip install ramentruck                   # core only (noodles, broth, tare, soft_boiled_egg, chashu)
 pip install ramentruck[explain]          # + nori  (SHAP)
 pip install ramentruck[tracking]         # + miso  (MLflow / W&B)
-pip install ramentruck[deep]             # + tonkotsu (PyTorch or TensorFlow)
+pip install ramentruck[deep]             # + tonkotsu (TensorFlow / Keras)
 pip install ramentruck[all]              # everything
 ```
 
@@ -330,7 +331,9 @@ predictions = trainer.predict(X_val)
 
 **File:** `src/ramentruck/tare.py`
 
-Named for the concentrated seasoning added to ramen — small adjustments with outsized impact. `tare` is the hyperparameter tuning wrapper. Supports grid search, randomized search, and Optuna (when available as an optional dep).
+Named for the concentrated seasoning added to ramen — small adjustments with outsized impact. `tare` is the hyperparameter tuning wrapper. Ships with grid search and randomized search; Optuna support is deferred (see note below).
+
+**Scope decision (locked in 2026-07-19):** `optuna` is dropped from the initial implementation. Optuna's API is trial-based (`suggest_*` calls inside an objective function), which doesn't fit the static `param_grid: dict` interface used by `"grid"`/`"random"`. Adding Optuna later means designing a separate search-space representation rather than forcing it through this signature — treated as a future follow-up, not part of this build.
 
 **Planned signature:**
 
@@ -341,10 +344,10 @@ def tare(
     X: pd.DataFrame | np.ndarray,
     y: pd.Series | np.ndarray,
     *,
-    method: str = "grid",          # "grid", "random", "optuna"
+    method: str = "grid",          # "grid", "random"
     cv: int = 5,
     scoring: str = "accuracy",
-    n_iter: int = 50,              # for "random" and "optuna" only
+    n_iter: int = 50,              # for "random" only
     n_jobs: int = -1,
     verbose: bool = True,
     random_state: int | None = 42,
@@ -367,15 +370,14 @@ def tare(
 |---|---|---|
 | `"grid"` | `GridSearchCV` | Exhaustive search over all combinations |
 | `"random"` | `RandomizedSearchCV` | Randomly samples `n_iter` combinations |
-| `"optuna"` | `optuna` (optional dep) | Bayesian optimization — most efficient for large spaces |
 
 **Design notes:**
 
 - `n_jobs=-1` by default — use all available cores
 - `random_state=42` default for reproducibility
 - Verbose mode logs the best params and best score at completion
-- For `"optuna"`, raise a clear `ImportError` with install instructions if Optuna is not installed
 - `cv_results` is always returned as a sorted DataFrame (best score first) for easy inspection
+- Optuna support is a future follow-up (not part of this build) — see the scope decision above
 
 **Example:**
 
@@ -600,7 +602,7 @@ def feature_importance(
 |---|---|
 | `"tree"` | Model has `feature_importances_` or is a tree-based estimator |
 | `"linear"` | Model has `coef_` (linear models) |
-| `"deep"` | Model is a Keras/PyTorch neural network |
+| `"deep"` | Model is a Keras neural network |
 | `"kernel"` | Fallback for any other model (slowest — subsamples by default) |
 
 **Plot types (when `plot=True`):**
@@ -712,15 +714,30 @@ with miso.run(experiment="price_classifier", run_name="rf_v2") as run:
 ### Deep Learning: `tonkotsu` — Deep Learning Interface
 
 **File:** `src/ramentruck/tonkotsu.py`  
-**Requires:** `pip install ramentruck[deep]` (pulls in `torch` or `tensorflow` — TBD)
+**Requires:** `pip install ramentruck[deep]` (pulls in `tensorflow`)
 
-Named for the heavy, rich, long-cooked pork-bone broth that takes all day and rewards patience. `tonkotsu` is the deep learning interface — wrapping PyTorch or TensorFlow/Keras for common architectures with consistent training loops, regularization hooks, and callback support.
+Named for the heavy, rich, long-cooked pork-bone broth that takes all day and rewards patience. `tonkotsu` is the deep learning interface — wrapping TensorFlow/Keras for common architectures with consistent training loops, regularization hooks, and callback support.
 
 **Primary design decision (pre-implementation):** Default to **Keras functional API**, not Sequential. The functional API is more flexible, handles multi-input/multi-output architectures, and is what serious practitioners use.
 
+**Backend decision (locked in 2026-07-19):** TensorFlow/Keras, not PyTorch. The extras table previously left this TBD, but every planned signature already used `keras.Model` and Keras callback types, so the ambiguity was resolved in favor of what the spec already committed to.
+
 ---
 
-#### Architecture Builders
+#### Design Philosophy: Composable Blocks → One-Call Presets
+
+`tonkotsu` is built in two layers so it serves two different users:
+
+1. **Composable blocks** — low-level, reusable functional-API pieces (a residual block, an attention layer) that someone who *does* understand the architecture can wire together themselves, the same way `keras.layers` gives you `Conv2D` or `LSTM` as primitives.
+2. **One-call presets** — higher-level builder functions (`build_resnet`, `build_lstm_seq2seq`, `build_rnn_generator`) that assemble the composable blocks into a working, compiled `keras.Model` with sensible defaults. A user who doesn't want to learn how ResNets or attention mechanisms work can call a preset bare and get a working model back; a user who wants to tweak filter counts, stage depth, or latent dimensions can override individual keyword arguments instead of rewriting the architecture.
+
+Defaults for each preset are sourced from working reference implementations (e.g., the stage/filter progression of a standard ResNet50, typical LSTM latent-dim sizing for sequence tasks) rather than picked arbitrarily.
+
+**Build order:** foundation (`build_dense`, `simmer`, `plot_history`, `EveryNEpochs`) first, then the **CNN family** (residual blocks → `build_resnet`), then the **RNN/sequence family** (RNN/LSTM/GRU cells → attention → `build_lstm_seq2seq` / `build_rnn_generator`). Each preset is layered on top of blocks implemented earlier, so later presets are cheaper once the block library exists.
+
+---
+
+#### Architecture Builders — Foundation
 
 **Planned signatures:**
 
@@ -752,6 +769,70 @@ def build_conv1d(
 ```
 
 Both builders use the **functional API** internally. `build_dense` is the go-to entry point for tabular data (which is the ThaiTruck → RamenTruck pipeline target).
+
+---
+
+#### CNN Family — Composable Blocks
+
+**Planned signatures:**
+
+```python
+def residual_identity_block(
+    x,
+    kernel_size: int,
+    filters: tuple[int, int, int],
+    stage: int,
+    block: str,
+) -> tf.Tensor
+    # Standard ResNet identity block: three convolutions + a shortcut
+    # connection back to the block input. Output shape matches input shape.
+
+def residual_conv_block(
+    x,
+    kernel_size: int,
+    filters: tuple[int, int, int],
+    stage: int,
+    block: str,
+    *,
+    strides: int = 2,
+) -> tf.Tensor
+    # ResNet convolutional block: three convolutions plus a projected
+    # shortcut, used when the block needs to change the tensor shape
+    # (downsampling between stages).
+```
+
+Both are functional-API building blocks — they take and return a tensor, so they compose into any CNN, not just `build_resnet`.
+
+#### CNN Family — One-Call Preset
+
+**Planned signature:**
+
+```python
+def build_resnet(
+    input_shape: tuple[int, int, int],
+    classes: int,
+    *,
+    stage_filters: list[tuple[int, int, int]] = [
+        (64, 64, 256), (128, 128, 512), (256, 256, 1024), (512, 512, 2048),
+    ],
+    blocks_per_stage: list[int] = [3, 4, 6, 3],   # ResNet50 defaults
+    output_activation: str = "softmax",
+    optimizer: str = "rmsprop",
+    loss: str = "categorical_crossentropy",
+) -> keras.Model
+```
+
+Calling `build_resnet(input_shape=(64, 64, 3), classes=6)` with no other arguments returns a compiled ResNet50-equivalent model — the user never has to know what a residual block is. `stage_filters` and `blocks_per_stage` are overridable for anyone who wants a shallower/deeper variant.
+
+---
+
+#### RNN / Sequence Family — Composable Blocks (planned, after CNN family)
+
+Low-level building blocks mirroring RNN/LSTM/GRU cell mechanics and a Bahdanau-style `AttentionLayer`, to be designed once the CNN family is implemented and the blocks → presets pattern is validated end to end.
+
+#### RNN / Sequence Family — One-Call Presets (planned, after CNN family)
+
+`build_rnn_generator(vocab_size, ...)` and `build_lstm_seq2seq(source_vocab_size, target_vocab_size, ...)` — one-call presets over the sequence blocks above, analogous to `build_resnet`. Signatures to be finalized when this family is scheduled.
 
 ---
 
@@ -970,7 +1051,7 @@ chashu.save(result.model, "models/rf_v1.chashu", metadata={"val_auc": result.met
 |---|---|---|
 | **thaitruck** | Live on PyPI (v0.2.2) | Batch DataFrame cleaning, merging, profiling, caching |
 | **sushitruck** | PyPI name secured | Streaming ingestion, API connectors |
-| **ramentruck** | PyPI name secured (v0.3.0 early development) | ML/AI toolkit - dataset inspection and training now; tuning, validation, explainability, and deep learning planned |
+| **ramentruck** | PyPI name secured (v0.4.0 early development) | ML/AI toolkit - dataset inspection, classical training, and deep learning (dense + CNN) now; tuning, validation, persistence, explainability, and tracking planned |
 | **bentotruck** | Planned | Statistical analysis, feature engineering, and predictive analytics |
 
 Each package is fully independent — none imports from another. They compose at the application layer through `pd.DataFrame` and numpy arrays. SushiTruck produces them. ThaiTruck transforms them. RamenTruck models them. The user's code is the only thing that knows about all three.
