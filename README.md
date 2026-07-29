@@ -38,10 +38,13 @@ infrastructure and more time building better models.
 # Getting Started
 
 The current public entry points are **`slurp()`** for dataset inspection
-and **`Broth`** for classical model training. A shared **`diagnostics`**
-engine (`DiagnosticEngine`, `DiagnosticReport`, `Recommendation`) is also
-available as reusable infrastructure for model-quality guidance; it is
-standalone for now and not yet wired into `Broth` or other modules.
+and **`Broth`** for classical model training, plus **`tare`**
+(hyperparameter tuning), **`soft_boiled_egg`** (cross-validation and
+learning curves), and **`chashu`** (model persistence). A shared
+**`diagnostics`** engine (`DiagnosticEngine`, `DiagnosticReport`,
+`Recommendation`) is also available as reusable infrastructure for
+model-quality guidance; it is standalone for now and not yet wired into
+`Broth` or other modules.
 
 Deep learning model building and training is available through
 **`tonkotsu`** (requires `pip install ramentruck[deep]`): a foundation of
@@ -89,6 +92,53 @@ predictions = trainer.predict(X_val)
 score = trainer.score(X_val, y_val, metric="accuracy")
 ```
 
+Hyperparameter tuning:
+
+```python
+from sklearn.ensemble import GradientBoostingClassifier
+from ramentruck import tare
+
+result = tare(
+    GradientBoostingClassifier(),
+    param_grid={"n_estimators": [50, 100, 200], "learning_rate": [0.01, 0.1, 0.3]},
+    X=X_train,
+    y=y_train,
+    method="random",
+    n_iter=20,
+    scoring="roc_auc",
+)
+
+print(result.best_params, result.best_score)
+```
+
+Cross-validation and learning curves:
+
+```python
+from ramentruck import soft_boiled_egg
+
+result = soft_boiled_egg(
+    my_model,
+    X, y,
+    strategy="stratified",
+    n_splits=5,
+    scoring=["accuracy", "f1"],
+    learning_curve=True,
+)
+
+print(f"{result.mean_score:.3f} +/- {result.std_score:.3f}")
+print(result.learning_curve_df)
+```
+
+Model persistence:
+
+```python
+from ramentruck import chashu
+
+chashu.save(trainer.estimator, "models/rf_v1.chashu", metadata={"val_auc": 0.93})
+bundle = chashu.load("models/rf_v1.chashu")
+df = chashu.list_models("models/")
+```
+
 Deterministic diagnostics (standalone, not yet wired into `Broth`):
 
 ```python
@@ -120,9 +170,9 @@ fig = tonkotsu.plot_history(result)
 | **noodles** | Dataset inspection and preprocessing (`slurp`, scaling, encoding, missing values, dataset splitting) |
 | **diagnostics** | Shared deterministic diagnostics (`DiagnosticEngine`, `DiagnosticReport`, `Recommendation`) — standalone, not yet consumed by other modules |
 | **broth** | Model training and evaluation (`Broth`, `BrothResult`) |
-| **tare** | Hyperparameter tuning |
-| **soft_boiled_egg** | Cross-validation and learning curves |
-| **chashu** | Model persistence and version management |
+| **tare** | Hyperparameter tuning (`tare`, `TareResult`; grid and random search) |
+| **soft_boiled_egg** | Cross-validation and learning curves (`soft_boiled_egg`, `EggResult`) |
+| **chashu** | Model persistence and version management (`chashu.save`, `chashu.load`, `chashu.list_models`, `ChashuBundle`) |
 | **nori** | Explainability (SHAP, feature importance, partial dependence) |
 | **miso** | Experiment tracking (MLflow / Weights & Biases) |
 | **tonkotsu** | Deep learning (`build_dense`, `simmer`, `build_resnet`, and more; TensorFlow / Keras) |
@@ -143,6 +193,7 @@ Current core dependencies:
 numpy
 pandas
 scikit-learn
+joblib
 ```
 
 Optional extras:
@@ -189,18 +240,21 @@ the others through standard pandas DataFrames and NumPy arrays.
 
 # Current Status
 
-**Version:** 0.4.0
+**Version:** 0.5.0
 
 Current functionality includes:
 
 - Dataset inspection with `slurp()`
 - Classical model training with `Broth`
+- Hyperparameter tuning with `tare` (grid and randomized search)
+- Cross-validation and learning curves with `soft_boiled_egg`
+- Model persistence and versioning with `chashu`
 - Shared deterministic diagnostics with `DiagnosticEngine` and `DiagnosticReport` (standalone; not yet used by `Broth`)
 - Deep learning with `tonkotsu`: `build_dense`, `simmer`, `plot_history`, `EveryNEpochs`, and a CNN family (`residual_identity_block`, `residual_conv_block`, `build_resnet`)
-- Shared `DatasetMenu`, `ChefRecommendation`, `BrothResult`, and `SipResult` objects
+- Shared `DatasetMenu`, `ChefRecommendation`, `BrothResult`, `TareResult`, `EggResult`, `ChashuBundle`, and `SipResult` objects
 - Intelligent preprocessing recommendations
 - Comprehensive unit testing for implemented modules
-- Hyperparameter tuning, cross-validation, persistence, and the remaining optional modules in active development
+- Explainability (`nori`) and experiment tracking (`miso`) remain planned, along with the RNN/sequence half of `tonkotsu`
 
 ---
 

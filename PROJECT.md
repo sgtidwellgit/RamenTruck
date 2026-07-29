@@ -1,6 +1,6 @@
 # RamenTruck — Project Document
 
-> **Current version:** 0.4.0 | **Python:** >= 3.9 | **Status:** Early development
+> **Current version:** 0.5.0 | **Python:** >= 3.9 | **Status:** Early development
 
 ---
 
@@ -60,21 +60,24 @@ The guiding design values:
 | Item | Status |
 |---|---|
 | PyPI name `ramentruck` | Secured |
-| Version | 0.4.0 |
-| `src/ramentruck/__init__.py` | Exists - exports `slurp`, `DatasetMenu`, `ChefRecommendation`, `Broth`, `BrothResult`, `DiagnosticEngine`, `DiagnosticReport`, `DiagnosticCategory`, `DiagnosticSeverity`, `Recommendation`, and `__version__ = "0.4.0"` (note: `tonkotsu` is not re-exported at the top level since it requires the optional `deep` extra — import it as `from ramentruck import tonkotsu`) |
+| Version | 0.5.0 |
+| `src/ramentruck/__init__.py` | Exists - exports `slurp`, `DatasetMenu`, `ChefRecommendation`, `Broth`, `BrothResult`, `tare`, `TareResult`, `soft_boiled_egg`, `EggResult`, `chashu`, `ChashuBundle`, `DiagnosticEngine`, `DiagnosticReport`, `DiagnosticCategory`, `DiagnosticSeverity`, `Recommendation`, and `__version__ = "0.5.0"` (note: `tonkotsu` is not re-exported at the top level since it requires the optional `deep` extra — import it as `from ramentruck import tonkotsu`) |
 | `src/ramentruck/noodles.py` | Implemented - dataset inspection and recommendation engine |
 | `src/ramentruck/diagnostics.py` | Implemented - shared deterministic diagnostics engine and immutable report types; standalone, not yet consumed by `broth` or other modules |
 | `src/ramentruck/broth.py` | Implemented - training wrapper with `fit`, `predict`, `score`, metrics, timing, and overfitting warning |
-| `src/ramentruck/results.py` | Implemented - shared `BrothResult` container |
+| `src/ramentruck/tare.py` | Implemented - `tare()` wraps `GridSearchCV`/`RandomizedSearchCV`; returns a `TareResult` with best params/score/model and sorted `cv_results` |
+| `src/ramentruck/soft_boiled_egg.py` | Implemented - `soft_boiled_egg()` wraps `KFold`/`StratifiedKFold`/`TimeSeriesSplit` with optional learning curves; returns an `EggResult` |
+| `src/ramentruck/chashu.py` | Implemented - `save()`/`load()`/`list_models()` around `joblib`, with automatic version metadata; returns a `ChashuBundle` |
+| `src/ramentruck/results.py` | Implemented - shared `BrothResult`, `TareResult`, `EggResult`, and `ChashuBundle` containers |
 | `src/ramentruck/tonkotsu.py` | Implemented (foundation + CNN family) - `build_dense`, `simmer`, `plot_history`, `EveryNEpochs`, `residual_identity_block`, `residual_conv_block`, `build_resnet`; requires the `deep` extra (TensorFlow + matplotlib). RNN/sequence family still planned. |
-| `pyproject.toml` | Exists - hatchling build, Python >= 3.9, MIT license, runtime dependencies, `dev` extra, and `deep` extra |
-| `README.md` | Exists - current `slurp()` and `Broth` usage, module table, install instructions, fleet context |
-| Core ML modules | `broth` implemented; `tare`, `soft_boiled_egg`, and `chashu` remain planned |
+| `pyproject.toml` | Exists - hatchling build, Python >= 3.9, MIT license, runtime dependencies (including `joblib`), `dev` extra, and `deep` extra |
+| `README.md` | Exists - current `slurp()`, `Broth`, `tare`, `soft_boiled_egg`, and `chashu` usage, module table, install instructions, fleet context |
+| Core ML modules | `broth`, `tare`, `soft_boiled_egg`, and `chashu` implemented |
 | Optional modules | `tonkotsu` implemented (foundation + CNN family; RNN/sequence family planned); `nori` and `miso` not yet implemented |
-| Tests | `tests/test_noodles.py`, `tests/test_broth.py`, `tests/test_diagnostics.py`, and `tests/test_tonkotsu.py` exist |
+| Tests | `tests/test_noodles.py`, `tests/test_broth.py`, `tests/test_diagnostics.py`, `tests/test_tare.py`, `tests/test_soft_boiled_egg.py`, `tests/test_chashu.py`, and `tests/test_tonkotsu.py` exist |
 | Optional extras in `pyproject.toml` | `dev` and `deep` exist; `explain`, `tracking`, and `all` are still planned |
 
-The package is no longer a pure stub. The current implemented workflows are dataset inspection through `slurp()`, estimator training through `Broth`, and deep learning model building/training through `tonkotsu` (dense networks and ResNet-style CNNs). A shared `diagnostics` engine exists as reusable infrastructure for future modules, not yet wired into `broth` or `tonkotsu`. Tuning, cross-validation, persistence, explainability, tracking, and the RNN/sequence half of deep learning remain roadmap items.
+The package is no longer a pure stub. The current implemented workflows are dataset inspection through `slurp()`, estimator training through `Broth`, hyperparameter tuning through `tare`, cross-validation and learning curves through `soft_boiled_egg`, model persistence through `chashu`, and deep learning model building/training through `tonkotsu` (dense networks and ResNet-style CNNs). A shared `diagnostics` engine exists as reusable infrastructure for future modules, not yet wired into `broth` or `tonkotsu`. Explainability, tracking, and the RNN/sequence half of deep learning remain roadmap items.
 
 > **Note on dataclasses:** result and report objects across the package (`DatasetMenu`, `ChefRecommendation`, `BrothResult`, `Recommendation`, `DiagnosticReport`) use `@dataclass(frozen=True)` without `slots=True`. The `slots` keyword on `dataclass()` requires Python 3.10+, and the package declares `requires-python = ">=3.9"`.
 
@@ -95,9 +98,9 @@ RamenTruck/
 |       +-- diagnostics.py      # shared diagnostic rules and report types (implemented, standalone)
 |       +-- broth.py            # model training / evaluation wrapper (implemented)
 |       +-- results.py          # shared result containers (implemented)
-|       +-- tare.py             # hyperparameter tuning (planned)
-|       +-- soft_boiled_egg.py  # cross-validation (planned)
-|       +-- chashu.py           # model serialization + versioning (planned)
+|       +-- tare.py             # hyperparameter tuning (implemented)
+|       +-- soft_boiled_egg.py  # cross-validation (implemented)
+|       +-- chashu.py           # model serialization + versioning (implemented)
 |       +-- nori.py             # SHAP / explainability [explain extra] (planned)
 |       +-- miso.py             # experiment tracking [tracking extra] (planned)
 |       +-- tonkotsu.py         # deep learning [deep extra] (implemented: foundation + CNN family)
@@ -107,9 +110,9 @@ RamenTruck/
 |   +-- test_noodles.py         # implemented
 |   +-- test_diagnostics.py     # implemented
 |   +-- test_broth.py           # implemented
-|   +-- test_tare.py            # planned
-|   +-- test_soft_boiled_egg.py # planned
-|   +-- test_chashu.py          # planned
+|   +-- test_tare.py            # implemented
+|   +-- test_soft_boiled_egg.py # implemented
+|   +-- test_chashu.py          # implemented
 |   +-- test_nori.py            # planned
 |   +-- test_miso.py            # planned
 |   +-- test_tonkotsu.py        # implemented (foundation + CNN family)
@@ -120,9 +123,9 @@ RamenTruck/
 
 ## Dependency & Extras Architecture
 
-The current package declares runtime dependencies for `numpy`, `pandas`, and `scikit-learn`, which match the implemented `noodles` and `broth` modules.
+The current package declares runtime dependencies for `numpy`, `pandas`, `scikit-learn`, and `joblib` (used by `chashu` for model serialization), which match the implemented `noodles`, `broth`, `tare`, `soft_boiled_egg`, and `chashu` modules.
 
-The intended core package should stay lightweight: pandas, numpy, and scikit-learn for core data inspection and classical ML. Heavy dependencies such as TensorFlow, SHAP, MLflow, and W&B should remain opt-in extras.
+The intended core package should stay lightweight: pandas, numpy, scikit-learn, and joblib for core data inspection, classical ML, tuning, validation, and persistence. Heavy dependencies such as TensorFlow, SHAP, MLflow, and W&B should remain opt-in extras.
 
 ```toml
 [project]
@@ -130,6 +133,7 @@ dependencies = [
     "pandas>=1.5",
     "numpy>=1.23",
     "scikit-learn>=1.3",
+    "joblib>=1.2",
 ]
 
 [project.optional-dependencies]
@@ -335,7 +339,7 @@ Named for the concentrated seasoning added to ramen — small adjustments with o
 
 **Scope decision (locked in 2026-07-19):** `optuna` is dropped from the initial implementation. Optuna's API is trial-based (`suggest_*` calls inside an objective function), which doesn't fit the static `param_grid: dict` interface used by `"grid"`/`"random"`. Adding Optuna later means designing a separate search-space representation rather than forcing it through this signature — treated as a future follow-up, not part of this build.
 
-**Planned signature:**
+**Implemented signature:**
 
 ```python
 def tare(
@@ -406,7 +410,7 @@ print(result.best_score)   # 0.93
 
 Named for a technique that is entirely about timing and calibration. `soft_boiled_egg` is the cross-validation module. Supports k-fold, stratified k-fold, and time-series splits. Critically, it surfaces learning curves and overfit diagnostics as first-class outputs — not just a score.
 
-**Planned signature:**
+**Implemented signature:**
 
 ```python
 def soft_boiled_egg(
@@ -480,9 +484,9 @@ print(result.learning_curve_df)
 
 **File:** `src/ramentruck/chashu.py`
 
-Named for the slow-cooked, perfectly preserved pork topping. `chashu` handles model serialization and persistence — wrapping joblib (or pickle) with metadata versioning so you always know what you saved, when, and with what params.
+Named for the slow-cooked, perfectly preserved pork topping. `chashu` handles model serialization and persistence — wrapping joblib with metadata versioning so you always know what you saved, when, and with what params.
 
-**Planned signatures:**
+**Implemented signatures:**
 
 ```python
 def save(
@@ -513,25 +517,31 @@ def list_models(directory: str | Path) -> pd.DataFrame
 | `python_version` | Python version at save time |
 | `sklearn_version` | scikit-learn version at save time |
 
-**Storage format:**
-
-Each saved model is a directory (or a single `.chashu` bundle file — TBD at implementation) containing:
+**Storage format (locked at implementation):** a directory, not a single file:
 
 ```
 my_model.chashu/
 ├── model.joblib     # the serialized model
-└── meta.json        # metadata, versions, timestamps
+└── meta.json        # {saved_at, ramentruck_version, python_version,
+                      #  sklearn_version, model_class, metadata: {...}}
 ```
 
-**`list_models(directory)`** — scans a directory and returns a DataFrame summarizing all saved `.chashu` bundles: path, saved_at, model class name, and any user-supplied metadata fields.
+`model_class` is recorded automatically alongside the other reserved fields
+so `list_models()` never has to deserialize a model just to summarize it.
+User-supplied `metadata` is stored under its own `metadata` key rather than
+flattened alongside the reserved fields, so a collision check exists purely
+for API clarity (documented reserved names remain off-limits for user keys)
+rather than to prevent an actual storage clash.
+
+**`list_models(directory)`** — scans a directory's immediate subdirectories and returns a DataFrame summarizing all saved `.chashu` bundles: path, saved_at, model class name, and any user-supplied metadata fields as extra columns.
 
 **Design notes:**
 
 - Always saves `ramentruck_version`, `python_version`, and `sklearn_version` automatically — no manual tracking required
-- `overwrite=False` by default — raises if the path already exists to prevent silent clobbers
+- `overwrite=False` by default — raises `FileExistsError` if the path already exists, to prevent silent clobbers
 - `verify=True` on load — checks that the saved sklearn version matches the current environment and warns on mismatch
-- Avoid `pickle` directly; prefer `joblib` for large numpy arrays (faster, more memory-efficient)
-- User-supplied `metadata` dict is merged with automatic fields; user keys must not collide with reserved names
+- Uses `joblib` (not `pickle`) for serialization — faster and more memory-efficient for large numpy arrays
+- User-supplied `metadata` dict must not use the reserved key names (`saved_at`, `ramentruck_version`, `python_version`, `sklearn_version`, `model_class`)
 
 **Example:**
 
@@ -1051,7 +1061,7 @@ chashu.save(result.model, "models/rf_v1.chashu", metadata={"val_auc": result.met
 |---|---|---|
 | **thaitruck** | Live on PyPI (v0.2.2) | Batch DataFrame cleaning, merging, profiling, caching |
 | **sushitruck** | PyPI name secured | Streaming ingestion, API connectors |
-| **ramentruck** | PyPI name secured (v0.4.0 early development) | ML/AI toolkit - dataset inspection, classical training, and deep learning (dense + CNN) now; tuning, validation, persistence, explainability, and tracking planned |
+| **ramentruck** | PyPI name secured (v0.5.0 early development) | ML/AI toolkit - dataset inspection, classical training, hyperparameter tuning, cross-validation, model persistence, and deep learning (dense + CNN) now; explainability and tracking planned |
 | **bentotruck** | Planned | Statistical analysis, feature engineering, and predictive analytics |
 
 Each package is fully independent — none imports from another. They compose at the application layer through `pd.DataFrame` and numpy arrays. SushiTruck produces them. ThaiTruck transforms them. RamenTruck models them. The user's code is the only thing that knows about all three.
@@ -1062,13 +1072,14 @@ Each package is fully independent — none imports from another. They compose at
 
 ### Before Next Feature Release
 
-1. Implement remaining core modules: `tare`, `soft_boiled_egg`, `chashu`
+1. Implement remaining optional modules: `nori`, `miso`
 2. Add tests for each new module
-3. Declare optional extras in `pyproject.toml` (`explain`, `tracking`, `deep`, `all`)
-4. Add import guards in `nori.py`, `miso.py`, `tonkotsu.py`
-5. Add `py.typed` marker (PEP 561) for type-checker support
-6. Add `CHANGELOG.md`
-7. Add `.github/workflows/tests.yml` - pytest on Python 3.9/3.10/3.11/3.12
+3. Declare remaining optional extras in `pyproject.toml` (`explain`, `tracking`, `all`)
+4. Add import guards in `nori.py`, `miso.py`
+5. Wire `diagnostics` into `broth`, `tare`, `soft_boiled_egg`, and `tonkotsu`
+6. Add `py.typed` marker (PEP 561) for type-checker support
+7. Add `CHANGELOG.md`
+8. Add `.github/workflows/tests.yml` - pytest on Python 3.9/3.10/3.11/3.12
 
 ### Build commands
 
@@ -1085,6 +1096,6 @@ twine upload dist/*      # publish to PyPI
 
 ---
 
-*Last updated: 2026-07-09*
+*Last updated: 2026-07-29*
 
 
