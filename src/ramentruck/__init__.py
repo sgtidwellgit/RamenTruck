@@ -1,9 +1,9 @@
 """ramentruck"""
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 
-from . import chashu
+from . import chashu, toppings
 from .broth import Broth
 from .diagnostics import (
     DiagnosticCategory,
@@ -12,12 +12,25 @@ from .diagnostics import (
     DiagnosticSeverity,
     Recommendation,
 )
+from .donburi import Donburi
+from .kaedama import Kaedama
+from .kaeshi import kaeshi, plot_calibration_curve
 from .noodles import (
     slurp,
     DatasetMenu,
     ChefRecommendation,
 )
-from .results import BrothResult, ChashuBundle, EggResult, TareResult
+from .results import (
+    BrothResult,
+    ChashuBundle,
+    EggResult,
+    KaeshiResult,
+    MisoRunSummary,
+    NoriResult,
+    PDResult,
+    TareResult,
+    ToppingsResult,
+)
 from .soft_boiled_egg import soft_boiled_egg
 from .tare import tare
 
@@ -31,11 +44,21 @@ __all__ = [
     "DiagnosticEngine",
     "DiagnosticReport",
     "DiagnosticSeverity",
+    "Donburi",
     "EggResult",
+    "Kaedama",
+    "KaeshiResult",
+    "MisoRunSummary",
+    "NoriResult",
+    "PDResult",
     "Recommendation",
     "TareResult",
+    "ToppingsResult",
     "chashu",
+    "kaeshi",
+    "plot_calibration_curve",
     "slurp",
     "soft_boiled_egg",
     "tare",
+    "toppings",
 ]

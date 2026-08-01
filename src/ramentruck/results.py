@@ -52,3 +52,55 @@ class ChashuBundle:
     ramentruck_version: str
     python_version: str
     sklearn_version: str
+
+
+@dataclass(frozen=True)
+class NoriResult:
+    """Result returned by :func:`ramentruck.nori.explain`."""
+
+    shap_values: Any
+    base_values: Any
+    feature_names: list[str]
+    data: Any
+    importance: pd.DataFrame
+    class_index: int | None
+
+
+@dataclass(frozen=True)
+class PDResult:
+    """Result returned by :func:`ramentruck.nori.partial_dependence`."""
+
+    curves: dict[str, pd.DataFrame]
+
+
+@dataclass(frozen=True)
+class MisoRunSummary:
+    """Result returned by :func:`ramentruck.miso.best_run`."""
+
+    run_id: str
+    run_name: str | None
+    params: dict[str, Any]
+    metrics: dict[str, float]
+    artifact_uri: str
+
+
+@dataclass(frozen=True)
+class ToppingsResult:
+    """Result returned by :func:`ramentruck.toppings.voting`, `.stack`, and `.bag`."""
+
+    model: Any
+    train_score: float
+    val_score: float | None
+    individual_scores: dict[str, float]
+    fit_time_s: float
+
+
+@dataclass(frozen=True)
+class KaeshiResult:
+    """Result returned by :func:`ramentruck.kaeshi.kaeshi`."""
+
+    model: Any
+    method: str
+    brier_score_before: float
+    brier_score_after: float
+    calibration_curve_df: pd.DataFrame
