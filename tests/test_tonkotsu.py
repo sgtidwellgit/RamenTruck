@@ -54,6 +54,27 @@ def test_build_dense_no_regularization_by_default():
     assert model.get_layer("hidden_1").kernel_regularizer is None
 
 
+def test_build_dense_random_state_reproduces_initial_weights():
+    """Verify the same random_state produces identical initial weights across calls."""
+
+    model_a = tonkotsu.build_dense(input_dim=4, hidden_layers=[8], output_dim=1, random_state=123)
+    model_b = tonkotsu.build_dense(input_dim=4, hidden_layers=[8], output_dim=1, random_state=123)
+
+    weights_a = model_a.get_layer("hidden_1").get_weights()[0]
+    weights_b = model_b.get_layer("hidden_1").get_weights()[0]
+
+    np.testing.assert_array_equal(weights_a, weights_b)
+
+
+def test_build_dense_without_random_state_still_builds_a_valid_model():
+    """Verify omitting random_state preserves prior (unseeded) behavior exactly."""
+
+    model = tonkotsu.build_dense(input_dim=4, hidden_layers=[8], output_dim=1)
+
+    assert model.input_shape == (None, 4)
+    assert model.output_shape == (None, 1)
+
+
 # ----------------------------------------------------------------------
 # simmer / SipResult
 # ----------------------------------------------------------------------

@@ -33,6 +33,7 @@ engineering practices rather than notebook-only examples.
   - [donburi — prediction and serving](#donburi--prediction-and-serving)
   - [miso — experiment tracking](#miso--experiment-tracking)
   - [tonkotsu — deep learning](#tonkotsu--deep-learning)
+  - [drivethrough — multi-label text classification](#drivethrough--multi-label-text-classification)
 - [Module Reference Table](#module-reference-table)
 - [Design Principles](#design-principles)
 - [The Food Truck Fleet](#the-food-truck-fleet)
@@ -83,6 +84,7 @@ the module does:
 | donburi | The bowl the finished dish is served in | Serve predictions through an API |
 | miso | Fermented; wisdom accumulated over time | Track experiments across runs |
 | tonkotsu | Heavy, rich, long-cooked | Deep learning |
+| drivethrough | Raw orders in, requested items out | Multi-label text classification |
 
 ---
 
@@ -112,12 +114,21 @@ extras so you never pay for a dependency you don't use:
 pip install ramentruck[deep]       # tonkotsu: tensorflow, matplotlib
 pip install ramentruck[explain]    # nori: shap, matplotlib
 pip install ramentruck[tracking]   # miso: mlflow
+pip install ramentruck[nlp]        # drivethrough's pretrained sentence-embedding encoder
 pip install ramentruck[all]        # everything above
 ```
 
 Importing an extras-gated module without its dependency installed
 raises a clear `ImportError` telling you exactly which extra to install
 - there's no silent fallback or degraded behavior.
+
+`drivethrough` is a special case worth calling out: the module itself
+requires no extra (its default TF-IDF + linear backend only needs
+scikit-learn, already a core dependency), but its optional neural
+backend needs `[deep]` and its optional pretrained sentence-embedding
+vectorizer needs `[nlp]`. Both are imported lazily, only when you
+actually select them, so picking the TF-IDF+linear combination never
+requires installing TensorFlow or sentence-transformers.
 
 ---
 
@@ -580,6 +591,118 @@ attention) is planned next.
 
 ---
 
+## drivethrough — multi-label text classification
+
+Raw orders come in, requested items go out. `drivethrough` classifies
+text into zero, one, or several consumer-defined labels - it has no
+built-in notion of what those labels mean. A support-ticket classifier
+and an AI-agent router are both just label vocabularies to this module.
+
+```python
+from ramentruck.drivethrough import MultiLabelTextClassifier
+
+labels = ["BILLING", "SALES", "TECH_SUPPORT", "CANCELLATION"]
+
+texts_train = [
+    "I want to cancel my subscription",
+    "how much does the premium plan cost",
+    "my app keeps crashing on startup",
+    "I was charged twice this month",
+    "please cancel my plan and refund the last charge",
+]
+labels_train = [
+    ["CANCELLATION"],
+    ["SALES"],
+    ["TECH_SUPPORT"],
+    ["BILLING"],
+    ["CANCELLATION", "BILLING"],
+]
+
+# TF-IDF + independent per-label logistic regression: the lightweight,
+# dependency-free default and a legitimate baseline in its own right.
+classifier = MultiLabelTextClassifier(labels, vectorizer="tfidf", backend="linear")
+classifier.fit(texts_train, labels_train)
+
+result = classifier.predict_one("please refund me and cancel my account")
+print(result.labels)      # ["BILLING", "CANCELLATION"]
+print(result.scores)      # every label's probability, thresholded or not
+print(result.abstained)   # False - at least one label cleared its threshold
+
+# Tune thresholds against VALIDATION data only, then evaluate on TEST once.
+classifier.tune_thresholds(texts_val, labels_val, metric="f1")
+report = classifier.evaluate(texts_test, labels_test)
+print(report.micro_f1, report.hamming_loss, report.per_label)
+
+# Swap in the neural backend (requires `pip install ramentruck[deep]`) -
+# same API, same thresholds/evaluation/persistence.
+neural_classifier = MultiLabelTextClassifier(labels, vectorizer="tfidf", backend="neural")
+neural_classifier.fit(texts_train, labels_train, texts_val, labels_val)
+
+# Complete, portable persistence.
+classifier.save("models/support_router.drivethrough")
+reloaded = MultiLabelTextClassifier.load("models/support_router.drivethrough")
+```
+
+### Multi-class vs. multi-label
+
+`drivethrough` deliberately never uses softmax. Softmax normalizes
+probabilities across labels to sum to 1, which only makes sense when
+labels are mutually exclusive. Real text isn't always: "how old was he
+when he died" can require both a lookup and a calculation at once, and
+a support message can be both a cancellation and a billing question.
+Every backend produces independent per-label sigmoid probabilities
+instead, and each label is thresholded on its own - so zero, one, or
+several labels can apply to the same input.
+
+### Abstention
+
+When no label clears its threshold, `predict_one`/`predict_batch`
+return an empty label list with `abstained=True` - never a guessed
+default label. Raw scores for every label are always included, even
+when none cross the threshold. Deciding what to do next (retry, ask a
+clarifying question, fall back to a default) is the consuming
+application's job, not this module's.
+
+### Data leakage
+
+- Fit the vectorizer (`classifier.fit(...)`) on training text only -
+  there is no parameter that lets validation or test text reach
+  vectorizer fitting.
+- Call `tune_thresholds()` with validation data only. It selects a
+  decision threshold from already-computed probabilities; it does not
+  recalibrate the probabilities themselves (see `kaeshi` for that).
+- Call `evaluate()` against a held-out test set exactly once. Reusing
+  its output to further tune thresholds or preprocessing turns "test"
+  into a second validation set.
+- `check_for_leakage(protected_texts, corpus_texts)` checks whether
+  protected/held-out text (e.g. a frozen evaluation benchmark you
+  supply) appears - exactly or after normalizing case/whitespace - in
+  a training or validation corpus you supply. It has no built-in
+  notion of what counts as "protected."
+
+### Linear vs. neural
+
+`backend="linear"` (independent per-label logistic regression over
+TF-IDF features) is a legitimate baseline, not a placeholder - it lets
+you distinguish "text classification works for this problem" from "a
+neural network measurably helps." `backend="neural"` is not assumed to
+be better; it reuses `tonkotsu.build_dense` (sigmoid output) and
+`tonkotsu.simmer` (binary cross-entropy) unchanged; comparing the two
+backends' `evaluate()` reports on the same data is how you find out
+which one actually earns its extra cost for your data.
+
+### Text representation is pluggable
+
+`vectorizer="tfidf"` (default) needs no optional dependency.
+`vectorizer="sentence_embedding"` (requires `pip install
+ramentruck[nlp]`) wraps a frozen, pretrained sentence-transformers
+model - configurable by name, never hard-coded - trading a small
+dependency for better generalization across paraphrased text. Both
+implement the same `TextVectorizer` interface, so swapping one for the
+other never touches the classifier or evaluation code.
+
+---
+
 # Module Reference Table
 
 | Module | Purpose | Extra required |
@@ -597,6 +720,7 @@ attention) is planned next.
 | **nori** | Explainability (`nori.explain`, `.plot_summary`, `.plot_importance`, `.partial_dependence`, `NoriResult`, `PDResult`) | `[explain]` |
 | **miso** | Experiment tracking (`miso.brew`, `.list_runs`, `.best_run`, `MisoRunSummary`) | `[tracking]` |
 | **tonkotsu** | Deep learning (`build_dense`, `simmer`, `build_resnet`, `EveryNEpochs`, `SipResult`) | `[deep]` |
+| **drivethrough** | Multi-label text classification (`MultiLabelTextClassifier`, `check_for_leakage`, `TfidfTextVectorizer`, `SentenceEmbeddingTextVectorizer`) | none (`[deep]` for the neural backend, `[nlp]` for sentence embeddings) |
 
 ---
 
@@ -634,7 +758,7 @@ the others through standard pandas DataFrames and NumPy arrays.
 
 # Current Status
 
-**Version:** 0.6.0
+**Version:** 0.7.0
 
 Every module from the original design is now implemented:
 
@@ -650,7 +774,8 @@ Every module from the original design is now implemented:
 - Prediction and serving with `Donburi` (including a `from_chashu` loader)
 - Explainability with `nori` (SHAP-based feature importance, summary plots, instance explanations, partial dependence)
 - Experiment tracking with `miso` (local-first, MLflow-backed, zero setup required)
-- Deep learning with `tonkotsu`: `build_dense`, `simmer`, `plot_history`, `EveryNEpochs`, and a CNN family (`residual_identity_block`, `residual_conv_block`, `build_resnet`)
+- Deep learning with `tonkotsu`: `build_dense` (with optional seeded, reproducible weight initialization), `simmer`, `plot_history`, `EveryNEpochs`, and a CNN family (`residual_identity_block`, `residual_conv_block`, `build_resnet`)
+- Multi-label text classification with `drivethrough`: pluggable text representation (`TfidfTextVectorizer`, optional `SentenceEmbeddingTextVectorizer`) and pluggable classifier backends (`LinearMultiLabelBackend`, `DenseNeuralMultiLabelBackend`) behind one `MultiLabelTextClassifier` API, with abstention, threshold tuning, multi-label evaluation and failure analysis, leakage checking, and complete bundle persistence
 - Shared result objects (`DatasetMenu`, `ChefRecommendation`, `BrothResult`, `TareResult`, `EggResult`, `ChashuBundle`, `KaeshiResult`, `ToppingsResult`, `NoriResult`, `PDResult`, `MisoRunSummary`, `SipResult`) throughout
 - Comprehensive unit testing across every module
 

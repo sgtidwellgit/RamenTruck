@@ -56,6 +56,7 @@ def build_dense(
     dropout_rate: float = 0.0,
     l2_lambda: float = 0.0,
     batch_norm: bool = False,
+    random_state: int | None = None,
 ) -> keras.Model:
     """
     Build a dense feedforward network using the Keras functional API.
@@ -72,8 +73,9 @@ def build_dense(
         Activation function used by hidden layers.
     output_activation
         Activation function used by the output layer. Use ``"sigmoid"`` for
-        binary classification, ``"softmax"`` for multi-class classification,
-        or ``"linear"`` for regression.
+        binary or multi-label classification (independent per-unit
+        probabilities), ``"softmax"`` for mutually-exclusive multi-class
+        classification, or ``"linear"`` for regression.
     dropout_rate
         Dropout rate applied after each hidden layer. Disabled when ``0.0``.
     l2_lambda
@@ -81,6 +83,13 @@ def build_dense(
         Disabled when ``0.0``.
     batch_norm
         Whether to apply batch normalization after each hidden layer.
+    random_state
+        Seed for each Dense layer's kernel initializer. When ``None``
+        (default), Keras' own unseeded initialization is used, matching
+        prior behavior exactly. Passing a fixed value makes the model's
+        initial weights reproducible across calls; full end-to-end
+        training reproducibility additionally requires seeding NumPy and
+        TensorFlow's global RNGs (e.g. ``tf.random.set_seed``) yourself.
 
     Returns
     -------
@@ -98,6 +107,7 @@ def build_dense(
         x = layers.Dense(
             units,
             activation=activation,
+            kernel_initializer=_dense_kernel_initializer(random_state),
             kernel_regularizer=regularizer,
             name=f"hidden_{index}",
         )(x)
@@ -108,9 +118,23 @@ def build_dense(
         if dropout_rate > 0:
             x = layers.Dropout(dropout_rate, name=f"dropout_{index}")(x)
 
-    outputs = layers.Dense(output_dim, activation=output_activation, name="dense_output")(x)
+    outputs = layers.Dense(
+        output_dim,
+        activation=output_activation,
+        kernel_initializer=_dense_kernel_initializer(random_state),
+        name="dense_output",
+    )(x)
 
     return keras.Model(inputs=inputs, outputs=outputs, name="dense_model")
+
+
+def _dense_kernel_initializer(random_state: int | None) -> Any:
+    """Return a fresh kernel initializer, seeded when random_state is given."""
+
+    if random_state is None:
+        return "glorot_uniform"
+
+    return keras.initializers.GlorotUniform(seed=random_state)
 
 
 def simmer(

@@ -1,9 +1,9 @@
 """ramentruck"""
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 
-from . import chashu, toppings
+from . import chashu, drivethrough, toppings
 from .broth import Broth
 from .diagnostics import (
     DiagnosticCategory,
@@ -55,6 +55,7 @@ __all__ = [
     "TareResult",
     "ToppingsResult",
     "chashu",
+    "drivethrough",
     "kaeshi",
     "plot_calibration_curve",
     "slurp",

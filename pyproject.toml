@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ramentruck"
-version = "0.6.0"
+version = "0.7.0"
 description = "A deep, layered ML/AI toolkit — the machine learning companion to ThaiTruck."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -37,12 +37,28 @@ tracking = [
     "mlflow>=2.10",
 ]
 
+nlp = [
+    "sentence-transformers>=2.2",
+]
+
 all = [
-    "ramentruck[deep,explain,tracking]",
+    "ramentruck[deep,explain,tracking,nlp]",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ramentruck"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".claude",
+    "*.egg-info",
+    ".pytest_cache",
+    "__pycache__",
+    ".coverage",
+    "htmlcov",
+    ".miso",
+    "mlruns",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
