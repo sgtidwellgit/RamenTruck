@@ -1,16 +1,18 @@
 """Unit tests for ramentruck.nori."""
 
-import matplotlib
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.datasets import make_classification, make_regression
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
-from ramentruck import nori
-from ramentruck.results import NoriResult, PDResult
-
+pytest.importorskip("shap", reason="nori requires shap ([explain] extra)")
+matplotlib = pytest.importorskip("matplotlib", reason="nori requires matplotlib ([explain] extra)")
 matplotlib.use("Agg")
+
+from sklearn.datasets import make_classification, make_regression  # noqa: E402
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor  # noqa: E402
+
+from ramentruck import nori  # noqa: E402
+from ramentruck.results import NoriResult, PDResult  # noqa: E402
 
 
 def _binary_classification_frame():

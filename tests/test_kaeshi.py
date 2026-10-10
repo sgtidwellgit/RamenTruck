@@ -1,6 +1,5 @@
 """Unit tests for ramentruck.kaeshi."""
 
-import matplotlib
 import pandas as pd
 import pytest
 from sklearn.datasets import make_classification
@@ -9,7 +8,14 @@ from sklearn.svm import SVC
 from ramentruck import kaeshi, plot_calibration_curve
 from ramentruck.results import KaeshiResult
 
-matplotlib.use("Agg")
+try:
+    import matplotlib
+
+    matplotlib.use("Agg")
+except ImportError:  # matplotlib comes with the [deep] and [explain] extras
+    matplotlib = None
+
+needs_matplotlib = pytest.mark.skipif(matplotlib is None, reason="plotting requires matplotlib")
 
 
 def _uncalibrated_svc_data():
@@ -64,6 +70,7 @@ def test_kaeshi_model_is_fitted_and_predicts_probabilities():
     assert (probabilities >= 0).all() and (probabilities <= 1).all()
 
 
+@needs_matplotlib
 def test_plot_calibration_curve_returns_figure():
     """Verify plot_calibration_curve returns a matplotlib Figure."""
 

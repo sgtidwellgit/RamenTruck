@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+
+pytest.importorskip("mlflow", reason="miso requires mlflow ([tracking] extra)")
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.datasets import make_classification
 
