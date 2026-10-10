@@ -758,7 +758,7 @@ the others through standard pandas DataFrames and NumPy arrays.
 
 # Current Status
 
-**Version:** 0.7.0
+**Version:** 2026.10.9 (date-based: `YYYY.M.D`)
 
 Every module from the original design is now implemented:
 

@@ -1,6 +1,6 @@
 """ramentruck"""
 
-__version__ = "0.7.1"
+__version__ = "2026.10.9"
 
 
 from . import chashu, drivethrough, toppings

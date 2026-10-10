@@ -40,6 +40,23 @@ def test_brew_logs_params_metrics_and_model(tracking_uri):
     assert runs.loc[runs["run_id"] == run_id, "metrics.accuracy"].iloc[0] == pytest.approx(0.9)
 
 
+def test_log_model_passes_options_to_mlflow(tracking_uri, monkeypatch):
+    """Verify log_model defaults to cloudpickle and forwards extra options."""
+
+    calls = []
+    monkeypatch.setattr(miso.mlflow.sklearn, "log_model", lambda *args, **kwargs: calls.append((args, kwargs)))
+    model = object()
+
+    with miso.brew("exp_options", tracking_uri=tracking_uri, verbose=False) as run:
+        run.log_model(model)
+        run.log_model(model, "tree", serialization_format="skops", skops_trusted_types=["x"])
+
+    assert calls == [
+        ((model, "model"), {"serialization_format": "cloudpickle"}),
+        ((model, "tree"), {"serialization_format": "skops", "skops_trusted_types": ["x"]}),
+    ]
+
+
 def test_brew_logs_artifact(tracking_uri, tmp_path):
     """Verify log_artifact attaches a local file to the run."""
 
