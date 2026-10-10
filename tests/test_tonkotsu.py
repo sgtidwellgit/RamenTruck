@@ -2,7 +2,10 @@
 
 import numpy as np
 import pytest
-from tensorflow import keras
+
+pytest.importorskip("tensorflow", reason="tonkotsu requires TensorFlow ([deep] extra)")
+
+from tensorflow import keras  # noqa: E402
 
 from ramentruck import tonkotsu
 

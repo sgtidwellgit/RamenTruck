@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ramentruck"
-version = "0.7.1"
+version = "2026.10.9"
 description = "A deep, layered ML/AI toolkit — the machine learning companion to ThaiTruck."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -58,6 +58,7 @@ include = [
     "tests/",
     "README.md",
     "PROJECT.md",
+    "LICENSE",
     "pyproject.toml",
 ]
 

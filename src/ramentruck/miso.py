@@ -62,10 +62,19 @@ class MisoRun:
 
         mlflow.log_metrics(metrics, step=step)
 
-    def log_model(self, model: Any, name: str = "model") -> None:
-        """Log a fitted scikit-learn compatible model as a run artifact."""
+    def log_model(self, model: Any, name: str = "model", **kwargs: Any) -> None:
+        """Log a fitted scikit-learn compatible model as a run artifact.
 
-        mlflow.sklearn.log_model(model, name)
+        The model is saved with ``cloudpickle`` unless
+        ``serialization_format`` says otherwise. Newer MLflow releases
+        default to ``skops``, which refuses common models (such as tree
+        ensembles) unless their types are listed in
+        ``skops_trusted_types``. Any other keyword arguments are passed
+        to ``mlflow.sklearn.log_model``.
+        """
+
+        kwargs.setdefault("serialization_format", "cloudpickle")
+        mlflow.sklearn.log_model(model, name, **kwargs)
 
     def log_artifact(self, path: str | Path) -> None:
         """Log an arbitrary local file as a run artifact."""
